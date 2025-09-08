@@ -44,7 +44,7 @@ uv sync
 
 ### Training
 
-Key training configurations can be modified in `config.py`. To train a model for a specific ESM (e.g. MPI):
+Key training configurations can be modified in `experiments/mpi/config.py`. To train a model for a specific ESM (e.g. MPI):
 ```bash
 uv run -m experiments.mpi.main
 ```
@@ -52,6 +52,7 @@ This will generate model files in `experiments/mpi/cache`.
 
 
 ### Inference
+
 Generate emulated climate projections:
 ```bash
 # Pre-industrial control
