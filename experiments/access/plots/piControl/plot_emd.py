@@ -13,8 +13,8 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.miroc.config import Config
-from experiments.miroc.plots.piControl.utils import load_data, VARIABLES
+from experiments.access.config import Config
+from experiments.access.plots.piControl.utils import load_data, VARIABLES
 
 # %%
 def compute_emd(foo, bar):
@@ -137,7 +137,7 @@ plot_variable(fig, gs, 'tas', 0)
 plot_variable(fig, gs, 'pr', 1)
 plot_variable(fig, gs, 'hurs', 2)
 plot_variable(fig, gs, 'sfcWind', 3)
-output_dir = 'experiments/miroc/plots/piControl/files'
+output_dir = 'experiments/access/plots/piControl/files'
 filepath = os.path.join(output_dir, 'emd.jpg')
 os.makedirs(output_dir, exist_ok=True)
 plt.savefig(filepath, dpi=300, bbox_inches='tight')

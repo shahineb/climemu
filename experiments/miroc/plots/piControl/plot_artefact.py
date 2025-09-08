@@ -161,5 +161,5 @@ cax.set_position([new_x0, new_y0, new_width, new_height])
 
 
 filepath = f'experiments/miroc/plots/piControl/files/windspeed_discrepancy.jpg'
-plt.savefig(filepath, dpi=350, bbox_inches='tight')
+plt.savefig(filepath, dpi=300, bbox_inches='tight')
 plt.close()

@@ -16,8 +16,8 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.mpi.config import Config
-from experiments.mpi.plots.piControl.utils import load_data, VARIABLES
+from experiments.access.config import Config
+from experiments.access.plots.piControl.utils import load_data, VARIABLES
 
 
 # %%
@@ -210,6 +210,6 @@ plot_variable(fig, gs, 'pr', 4)
 plot_variable(fig, gs, 'hurs', 8)
 plot_variable(fig, gs, 'sfcWind', 12)
 
-filepath = f'experiments/mpi/plots/piControl/files/moments.jpg'
+filepath = f'experiments/access/plots/piControl/files/moments.jpg'
 plt.savefig(filepath, dpi=300, bbox_inches='tight')
 plt.close()

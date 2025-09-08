@@ -15,8 +15,8 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.miroc.config import Config
-from experiments.miroc.plots.piControl.utils import load_data, VARIABLES
+from experiments.access.config import Config
+from experiments.access.plots.piControl.utils import load_data, VARIABLES
 
 
 # %%
@@ -273,7 +273,7 @@ cbar.ax.tick_params(labelsize=16)
 cbar.ax.set_yticks([0, 1])
 cbar.set_label(f"Correlation", labelpad=0, fontsize=16, weight="bold")
 
-output_dir = 'experiments/miroc/plots/piControl/files'
+output_dir = 'experiments/access/plots/piControl/files'
 filepath = os.path.join(output_dir, 'crosscorrelations.jpg')
 os.makedirs(output_dir, exist_ok=True)
 plt.savefig(filepath, dpi=300, bbox_inches='tight')

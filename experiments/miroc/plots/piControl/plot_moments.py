@@ -211,5 +211,5 @@ plot_variable(fig, gs, 'hurs', 8)
 plot_variable(fig, gs, 'sfcWind', 12)
 
 filepath = f'experiments/miroc/plots/piControl/files/moments.jpg'
-plt.savefig(filepath, dpi=400, bbox_inches='tight')
+plt.savefig(filepath, dpi=300, bbox_inches='tight')
 plt.close()

@@ -14,9 +14,9 @@ if base_dir not in sys.path:
     sys.path.append(base_dir)
 
 from src.utils import arrays
-from experiments.miroc.config import Config
-from experiments.miroc.plots.ssp245.utils import load_data, VARIABLES
-from experiments.miroc.plots.piControl.utils import load_data as load_piControl_data
+from experiments.access.config import Config
+from experiments.access.plots.ssp245.utils import load_data, VARIABLES
+from experiments.access.plots.piControl.utils import load_data as load_piControl_data
 
 
 def quantile_ci(sorted_data, probs, alpha=0.05):
@@ -122,5 +122,5 @@ for i, var in enumerate(VARIABLES.keys()):
     sec_bot.spines['bottom'].set_color("tomato")
     sec_bot.tick_params(axis='x', colors='tomato', pad=0.1)
 
-plt.savefig("experiments/miroc/plots/ssp245/files/tails.jpg", dpi=300, bbox_inches='tight')
+plt.savefig("experiments/access/plots/ssp245/files/tails.jpg", dpi=300, bbox_inches='tight')
 plt.close()

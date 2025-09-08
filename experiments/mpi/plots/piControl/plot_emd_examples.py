@@ -209,6 +209,6 @@ fig.legend(
 )
 output_dir = "experiments/mpi/plots/piControl/files"
 filepath = os.path.join(output_dir, "emd_examples.jpg")
-plt.savefig(filepath, dpi=500, bbox_inches='tight', pad_inches=0.02)
+plt.savefig(filepath, dpi=300, bbox_inches='tight', pad_inches=0.02)
 plt.close()
 # plt.show()
