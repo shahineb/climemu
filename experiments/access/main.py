@@ -1,7 +1,6 @@
 import equinox as eqx
 
-from src.models import HealPIXUNet
-from src.schedules import ContinuousVESchedule
+from src.diffusion import HealPIXUNet, ContinuousVESchedule
 
 from .config import Config
 from .data import load_dataset, compute_normalization, estimate_sigma_max

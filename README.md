@@ -31,9 +31,9 @@ Add example directory
 
 ## Usage
 
-### Installation
-
 Instructions use [uv](https://docs.astral.sh/uv/) for Python package and project management. Code tested on Python 3.10+. Training and inference require GPU support.
+
+### Installation
 ```bash
 # Clone the repository and install dependencies
 git clone https://github.com/shahineb/jax-esm-emulation.git
@@ -44,11 +44,11 @@ uv sync
 
 ### Training
 
-Key training configurations can be modified in `experiments/mpi/config.py`. To train a model for a specific ESM (e.g. MPI):
+To train a model for a specific ESM (e.g. MPI):
 ```bash
 uv run -m experiments.mpi.main
 ```
-This will generate model files in `experiments/mpi/cache`.
+This will generate model files in `experiments/mpi/cache`. Training configurations can be modified in `experiments/mpi/config.py`. 
 
 
 ### Inference

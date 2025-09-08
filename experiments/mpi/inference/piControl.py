@@ -10,8 +10,7 @@ import xarray as xr
 from tqdm import tqdm
 from functools import partial
 
-from src.schedules import ContinuousVESchedule
-from src.models import HealPIXUNet
+from src.diffusion import HealPIXUNet, ContinuousVESchedule
 
 from ..config import Config
 from ..data import load_dataset

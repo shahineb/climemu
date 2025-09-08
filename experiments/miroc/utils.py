@@ -10,7 +10,7 @@ import equinox as eqx
 from torch.utils.data import DataLoader, Subset
 from src.utils.collate import numpy_collate
 
-from src.samplers import ContinuousHeunSampler
+from src.diffusion import ContinuousHeunSampler
 from src.utils.graphs import compute_latlon_to_healpix_edges
 
 

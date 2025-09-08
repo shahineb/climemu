@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 import wandb
 
 from src.utils.collate import numpy_collate
-from src.losses import denoising_make_step, denoising_batch_loss
+from src.diffusion import denoising_make_step, denoising_batch_loss
 from src.datasets import PatternToCMIP6Dataset
 from experiments.mpi.config import Config
 from . import utils
