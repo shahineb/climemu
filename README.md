@@ -3,6 +3,12 @@
 This repository contains the implementation for the paper **"Score-based generative emulation of impact-relevant earth system model outputs"**. Codebase allows to train and run emulators of monthly averaged near-surface temperature, precipitation, relative humidity, windspeed for MPI-ESM1-2-LR, MIROC6, ACCESS-ESM1-5.
 
 
+
+## Example
+
+Add example directory
+
+
 ## Project Structure
 ```
 ├── src/                   # Core source code
@@ -25,11 +31,22 @@ This repository contains the implementation for the paper **"Score-based generat
 
 ## Usage
 
+### Instalation
+
+Code tested on Python 3.10+. Training and inference require GPU support.
+```bash
+# Clone the repository and install dependencies
+git clone https://github.com/shahineb/jax-esm-emulation.git
+cd jax-esm-emulation
+uv sync
+```
+
+
 ### Training
 
 Key training configurations can be modified in `config.py`. To train a model for a specific ESM (e.g., MPI-ESM1-2-LR):
 ```bash
-python -m experiments.mpi.main
+uv run -m experiments.mpi.main
 ```
 This will generate files in `experiments/mpi/cache/`.
 
@@ -38,29 +55,8 @@ This will generate files in `experiments/mpi/cache/`.
 Generate emulated climate projections:
 ```bash
 # Pre-industrial control
-python -m experiments.mpi.inference.piControl
+uv run -m experiments.mpi.inference.piControl
 
 # Future scenarios
-python inference/ssp245.py
-```
-
-
-
-## Installation
-
-### Requirements
-
-- Python 3.8+
-- JAX with GPU support
-- Key dependencies: `equinox`, `xarray`, `numpy`, `wandb`
-
-### Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/shahineb/jax-esm-emulation.git
-cd jax-esm-emulation
-
-# Install dependencies
-pip install -r requirements.txt  # Create this file with your dependencies
+uv run -m experiments.mpi.inference.ssp245
 ```
