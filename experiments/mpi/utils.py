@@ -131,7 +131,7 @@ def update_ema(ema_model, model, decay):
     numeric_model, _ = eqx.partition(model, is_float_array)
     
     # Update only the numeric parameters.
-    updated_numeric = jax.tree_map(lambda e, p: decay * e + (1 - decay) * p,
+    updated_numeric = jax.tree.map(lambda e, p: decay * e + (1 - decay) * p,
                                    numeric_ema,
                                    numeric_model)
     
