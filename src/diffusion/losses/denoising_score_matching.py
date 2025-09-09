@@ -119,5 +119,5 @@ def compute_grad_norm(grads):
     Computes the L2 norm of gradients in a pytree.
     """
     # Flatten the gradient pytree and sum the squared norms
-    squared_norms = [jnp.sum(jnp.square(g)) for g in jax.tree_leaves(grads) if g is not None]
+    squared_norms = [jnp.sum(jnp.square(g)) for g in jax.tree.leaves(grads) if g is not None]
     return jnp.sqrt(jnp.sum(jnp.array(squared_norms)))

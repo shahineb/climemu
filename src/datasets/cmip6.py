@@ -86,7 +86,7 @@ class CMIP6Data(Dataset):
             raise FileNotFoundError(f"No files found for {variable} in {experiment}")
         
         time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
-        dataset = xr.open_mfdataset(existing_paths, combine="nested", concat_dim="member", decode_times=time_coder)
+        dataset = xr.open_mfdataset(existing_paths, combine="nested", concat_dim="member", join="outer", decode_times=time_coder)
         if variable == "pr":
             dataset = dataset * SECONDS_PER_DAY
         return dataset
