@@ -167,7 +167,7 @@ def estimate_sigma_max(
     sigmas: Optional[np.ndarray],
     subset_size: int = 10000,
     seed: int = 42,
-    alpha: float = 0.01,
+    alpha: float = 0.05,
     sigma_max_path: str = None,
     force_recompute: bool = False
 ) -> float:

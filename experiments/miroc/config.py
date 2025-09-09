@@ -47,7 +47,7 @@ class DataConfig:
     norm_max_samples: int = 10000  # Maximum number of samples to use for normalization
     sigma_max_path: str = os.path.join(CACHE_DIR, "σmax.npy")  # Path to save/load σmax
     sigma_max_samples: int = 100000  # Maximum number of samples to use for sigma max estimation
-    sigma_max_grid: np.ndarray = tuple(np.linspace(0.1, 100, 100).tolist())
+    sigma_max_grid: np.ndarray = tuple(np.linspace(0.1, 200, 100).tolist())
 
 
 @dataclass
@@ -57,7 +57,7 @@ class TrainingConfig:
     Defines hyperparameters, logging intervals, and output paths.
     """
     batch_size: int = 32  # Number of samples per batch
-    learning_rate: float = 3e-4  # Adam optimizer learning rate
+    learning_rate: float = 1e-4  # Adam optimizer learning rate
     ema_decay: float = 0.999  # Exponential moving average decay
     epochs: int = 10  # Number of training epochs
     log_interval: int = 20  # Steps between metric logging
