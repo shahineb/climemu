@@ -30,7 +30,6 @@ Add example directory
 
 
 ## Usage
-
 Instructions use [uv](https://docs.astral.sh/uv/) for Python package and project management. Code tested on Python 3.12. Training and inference require GPU support.
 
 ### Installation
@@ -41,14 +40,12 @@ cd jax-esm-emulation
 uv sync
 ```
 
-
 ### Training
-
-To train a model for a specific ESM (e.g. MPI):
+To train an emulator for a specific ESM (e.g. MPI-ESM1-2-LR):
 ```bash
 uv run -m experiments.mpi.main
 ```
-This will generate model files in `experiments/mpi/cache`. Training configurations can be modified in `experiments/mpi/config.py`. The code expect CMIP6 data to be organized as follows
+This will generate model files in `experiments/mpi/cache`. Training configurations can be modified in `experiments/mpi/config.py`. The code expect CMIP6 archives precomputed as anomalies and organized as follows
 ```
 root_dir/
 └── model_name/
@@ -60,7 +57,6 @@ root_dir/
 ```
 
 ### Inference
-
 Generate emulated climate projections:
 ```bash
 # Pre-industrial control
