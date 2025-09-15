@@ -134,7 +134,7 @@ def main():
     generate_samples = partial(utils.draw_samples_batch,
                                model=model,
                                schedule=schedule,
-                               n_samples=config.sampling.n_samples,
+                               n_samples=1,
                                n_steps=config.sampling.n_steps,
                                μ=μ_train, σ=σ_train,
                                output_size=output_size)

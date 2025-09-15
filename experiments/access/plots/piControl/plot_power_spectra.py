@@ -80,14 +80,14 @@ for i, var in enumerate(VARIABLES):
 
 
 width_ratios  = [0.1, 1, 0.1, 0.25, 1, 0.1, 0.25, 1, 0.1, 0.25, 1, 0.1, 0.25]
-height_ratios = [0.4, 0.4, 1]
+height_ratios = [0.8, 0.8, 1.5]
 nrow = len(height_ratios)
 ncol = len(width_ratios)
 nroweff = sum(height_ratios)
 ncoleff = sum(width_ratios)
 
 
-fig = plt.figure(figsize=(4 * ncoleff, 3.5 * nroweff))
+fig = plt.figure(figsize=(4 * ncoleff, 2.6 * nroweff))
 gs = GridSpec(nrows=nrow,
               ncols=ncol,
               figure=fig,
@@ -98,11 +98,11 @@ gs = GridSpec(nrows=nrow,
 
 ax = fig.add_subplot(gs[0, 0])
 ax.axis("off")
-ax.text(2.2, 0.5, f"{config.data.model_name} \n realization", va="center", ha="right", fontsize=8)
+ax.text(0.25, 0.5, f"{config.data.model_name} \n realization", va="center", ha="center", rotation="vertical", fontsize=12)
 
 ax = fig.add_subplot(gs[1, 0])
 ax.axis("off")
-ax.text(2.2, 0.5, "Emulator \n sample", va="center", ha="right", fontsize=8)
+ax.text(0.25, 0.5, "Emulator \n sample", va="center", ha="center", rotation="vertical", fontsize=12)
 
 
 for i, var in enumerate(VARIABLES):
@@ -139,23 +139,23 @@ for i, var in enumerate(VARIABLES):
     cbar.set_label(f"[{unit}]", labelpad=4)
     pos = cax.get_position()
     new_width  = pos.width * 0.3    # thinner
-    new_height = pos.height * 0.5   # shorter
-    new_x0     = pos.x0 - 0.02      # move left
+    new_height = pos.height * 0.3   # shorter
+    new_x0     = pos.x0 + 0.00      # move right
     new_y0     = pos.y0 + (pos.height - new_height) / 2  # recenter vertically
     cax.set_position([new_x0, new_y0, new_width, new_height])
 
     ax = fig.add_subplot(gs[2, i:i+2])
     ax.fill_between(k, emulator[var]['lb'], emulator[var]['ub'], color='tomato', alpha=0.2)
     ax.fill_between(k, cmip6[var]['lb'], cmip6[var]['ub'], color='cornflowerblue', alpha=0.2)
-    ax.plot(k, cmip6[var]['median'], label=config.data.model_name, color='cornflowerblue')
+    ax.plot(k, cmip6[var]['median'], label='MPI-ESM2-1-LR', color='cornflowerblue')
     ax.plot(k, emulator[var]['median'], label='Emulator', color='tomato')
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.margins(x=0, y=0)
-    ax.set_xlabel('Inverse wavelength [km⁻¹]', fontsize=12)
-    ax.set_ylabel(f'[({unit})²⋅km]', fontsize=12)
+    ax.set_xlabel('Inverse wavelength [km⁻¹]', fontsize=14)
+    ax.set_ylabel(f'[({unit})²⋅km]', fontsize=14)
     if i == 1:
-        ax.legend(fontsize=14)
+        ax.legend(fontsize=16, frameon=False)
 
 output_dir = 'experiments/access/plots/piControl/files'
 filepath = os.path.join(output_dir, 'psd.jpg')
