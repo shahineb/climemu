@@ -1,11 +1,18 @@
+import os
+import sys
 from functools import partial
+import argparse
 import xarray as xr
 import jax.numpy as jnp
 import jax.random as jr
 import equinox as eqx
+
+base_dir = os.path.join(os.getcwd())
+sys.path.append(base_dir)
+
 from src.diffusion import HealPIXUNet, ContinuousVESchedule
 from experiments.mpi.config import Config
-import .utils as utils
+import examples.utils as utils
 
 
 
@@ -63,30 +70,45 @@ def build_emulator(config, n_samples=1, n_steps=30):
     return emulator
 
 
-if __name__ == "__main__":
-    config = Config()
-    emulator = build_emulator(config, n_samples=1, n_steps=30)
+def parse_args():
+    parser = argparse.ArgumentParser(description="Draw emulator samples for MPI experiment.")
+    parser.add_argument("--gmst", type=float, default=2.0, help="Global Mean Surface Temperature (°C) anomaly wrt piControl")
+    parser.add_argument("--month", type=int, default=1, help="Month index (1-12)")
+    parser.add_argument("--seed", type=int, default=0, help="Random seed for reproducibility")
+    parser.add_argument("--n-samples", type=int, default=1, dest="n_samples", help="Number of samples to draw")
+    parser.add_argument("--n-steps", type=int, default=30, dest="n_steps", help="Number of steps for diffusion model")
+    parser.add_argument("--output", type=str, default="./emulator_samples.nc", help="Output NetCDF path")
+    return parser.parse_args()
 
-    ΔT = 2.0  # Temperature anomaly in °C
-    month = 1  # January
-    seed = 0  # Random seed for reproducibility
+
+def main():
+    args = parse_args()
+    config = Config()
+    emulator = build_emulator(config, n_samples=args.n_samples, n_steps=args.n_steps)
+
+    ΔT = args.gmst
+    month = args.month
+    seed = args.seed
     samples = emulator(ΔT=ΔT, month=month, seed=seed)
 
 
     # Save samples to a NetCDF file
-    varnames = config.data.variables
     nlat, nlon = config.model.input_size[1], config.model.input_size[2]
     ds = xr.Dataset(
         {
-            var: (('member', 'lat', 'lon'), samples[:, i, :, :])
+            var: (("member", "lat", "lon"), samples[:, i, :, :])
             for i, var in enumerate(config.data.variables)
         },
         coords={
-            'member': jnp.arange(len(samples)) + 1,
-            'lat': jnp.arange(nlat),
-            'lon': jnp.arange(nlon),
-        }
+            "member": jnp.arange(len(samples)) + 1,
+            "lat": jnp.arange(nlat),
+            "lon": jnp.arange(nlon),
+        },
     )
-    ds.to_netcdf("./emulator_samples.nc")
+    ds.to_netcdf(args.output)
+
+
+if __name__ == "__main__":
+    main()
     
 

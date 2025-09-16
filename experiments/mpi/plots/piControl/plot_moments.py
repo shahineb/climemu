@@ -1,15 +1,12 @@
-# %%
 import os
 import sys
 import numpy as np
 from scipy.stats import skew
 import xarray as xr
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
 import matplotlib.ticker as ticker
 import matplotlib.colors as mcolors
 import cartopy.crs as ccrs
-
 
 # Add base directory to path if not already added
 base_dir = os.path.join(os.getcwd())
@@ -17,29 +14,49 @@ if base_dir not in sys.path:
     sys.path.append(base_dir)
 
 from experiments.mpi.config import Config
-from experiments.mpi.plots.piControl.utils import load_data, VARIABLES
+from experiments.mpi.plots.piControl.utils import load_data, VARIABLES, setup_figure, save_plot
 
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+OUTPUT_DIR = 'experiments/mpi/plots/piControl/files'
+DPI = 300
+WIDTH_MULTIPLIER = 6.0
+HEIGHT_MULTIPLIER = 2.9
+WSPACE = 0.05
+HSPACE = 0.2
 
-# %%
+# =============================================================================
+# COMMON FUNCTIONS
+# =============================================================================
+
+def compute_moments(data):
+    """Compute statistical moments (mean, std, skewness) for data."""
+    stack = data.stack(flat=('year', 'month'))
+    μ = stack.mean(['flat'])
+    σ = stack.std(['flat'])
+    γ1 = xr.apply_ufunc(skew, stack, input_core_dims=[['flat']], 
+                       kwargs={'axis': -1, 'nan_policy': 'omit'}, 
+                       output_dtypes=[float])
+    return μ, σ, γ1
+
+# =============================================================================
+# DATA LOADING AND PREPARATION
+# =============================================================================
+
 config = Config()
 climatology, piControl_diffusion, piControl_cmip6 = load_data(config, in_memory=True)
 piControl_cmip6 = piControl_cmip6 - climatology
 
-
-# %%
-stack = piControl_diffusion.stack(flat=('year', 'month'))
-μ_diffusion = stack.mean(['flat'])
-σ_diffusion = stack.std(['flat'])
-γ1_diffusion = xr.apply_ufunc(skew, stack, input_core_dims=[['flat']], kwargs={'axis': -1, 'nan_policy': 'omit'}, output_dtypes=[float])
+# Compute statistical moments for both datasets
+μ_diffusion, σ_diffusion, γ1_diffusion = compute_moments(piControl_diffusion)
+μ_cmip6, σ_cmip6, γ1_cmip6 = compute_moments(piControl_cmip6)
 
 
-stack = piControl_cmip6.stack(flat=('year', 'month'))
-μ_cmip6 = stack.mean(['flat'])
-σ_cmip6 = stack.std(['flat'])
-γ1_cmip6 = xr.apply_ufunc(skew, stack, input_core_dims=[['flat']], kwargs={'axis': -1, 'nan_policy': 'omit'}, output_dtypes=[float])
+# =============================================================================
+# PLOTTING
+# =============================================================================
 
-
-# %%
 def plot_variable(fig, gs, var, i):
     var_info = VARIABLES[var]
     var_name = var_info['name']
@@ -69,7 +86,7 @@ def plot_variable(fig, gs, var, i):
                     cmap=cmap, add_colorbar=False)
     ax.coastlines()
     if i == 0:
-        ax.set_title(f"Mean", fontsize=16, weight="bold")
+        ax.set_title("Mean", fontsize=16, weight="bold")
 
 
     flatvalues.append(μ_diffusion[var].values.ravel())
@@ -88,7 +105,8 @@ def plot_variable(fig, gs, var, i):
     cax = fig.add_subplot(gs[i + 1, 2])
     cbar = fig.colorbar(mesh1,
                         cax=cax,
-                        orientation='horizontal')
+                        orientation='horizontal',
+                        extend='both')
     cbar.locator = ticker.MaxNLocator(nbins=3, integer=True)
     cbar.update_ticks()
     cax.xaxis.set_ticks_position('top')
@@ -111,7 +129,7 @@ def plot_variable(fig, gs, var, i):
                     cmap=cmap_upper, add_colorbar=False)
     ax.coastlines()
     if i == 0:
-        ax.set_title(f"Standard deviation", fontsize=16, weight="bold")
+        ax.set_title("Standard deviation", fontsize=16, weight="bold")
 
 
     flatvalues.append(σ_diffusion[var].values.ravel())
@@ -128,7 +146,8 @@ def plot_variable(fig, gs, var, i):
     cax = fig.add_subplot(gs[i + 1, 3])
     cbar = fig.colorbar(mesh1,
                         cax=cax,
-                        orientation='horizontal')
+                        orientation='horizontal',
+                        extend='both')
     cbar.locator = ticker.MaxNLocator(nbins=3, integer=True)
     cbar.update_ticks()
     cax.xaxis.set_ticks_position('top')
@@ -151,7 +170,7 @@ def plot_variable(fig, gs, var, i):
                     cmap='PiYG', add_colorbar=False)
     ax.coastlines()
     if i == 0:
-        ax.set_title(f"Skewness", fontsize=16, weight="bold")
+        ax.set_title("Skewness", fontsize=16, weight="bold")
 
 
     flatvalues.append(γ1_diffusion[var].values.ravel())
@@ -170,7 +189,8 @@ def plot_variable(fig, gs, var, i):
     cax = fig.add_subplot(gs[i + 1, 4])
     cbar = fig.colorbar(mesh1,
                         cax=cax,
-                        orientation='horizontal')
+                        orientation='horizontal',
+                        extend='both')
     cbar.locator = ticker.MaxNLocator(nbins=3, integer=True)
     cbar.update_ticks()
     cax.xaxis.set_ticks_position('top')
@@ -184,32 +204,29 @@ def plot_variable(fig, gs, var, i):
 
 
 
-# %%
-# plot
-width_ratios  = [0.06, 0.05, 1, 1, 1]
-height_ratios = [1, 0.05, 1, 0.1] * 4
-nrow = len(height_ratios)
-ncol = len(width_ratios)
-nroweff = sum(height_ratios)
-ncoleff = sum(width_ratios)
+def create_moments_plot():
+    """Create the statistical moments comparison plot."""
+    width_ratios = [0.06, 0.05, 1, 1, 1]
+    height_ratios = [1, 0.05, 1, 0.1] * 4
+    
+    fig, gs = setup_figure(width_ratios, height_ratios, WIDTH_MULTIPLIER, HEIGHT_MULTIPLIER, WSPACE, HSPACE)
+    
+    # Plot each variable
+    plot_variable(fig, gs, 'tas', 0)
+    plot_variable(fig, gs, 'pr', 4)
+    plot_variable(fig, gs, 'hurs', 8)
+    plot_variable(fig, gs, 'sfcWind', 12)
+    
+    return fig
 
+# =============================================================================
+# MAIN EXECUTION
+# =============================================================================
 
-fig = plt.figure(figsize=(6 * ncoleff, 2.9 * nroweff))
+def main():
+    """Main function to generate moments plot."""
+    fig = create_moments_plot()
+    save_plot(fig, OUTPUT_DIR, 'moments.jpg', dpi=DPI)
 
-gs = GridSpec(nrows=nrow,
-              ncols=ncol,
-              figure=fig,
-              width_ratios=width_ratios,
-              height_ratios=height_ratios,
-              hspace=0.2,
-              wspace=0.05)
-
-
-plot_variable(fig, gs, 'tas', 0)
-plot_variable(fig, gs, 'pr', 4)
-plot_variable(fig, gs, 'hurs', 8)
-plot_variable(fig, gs, 'sfcWind', 12)
-
-filepath = f'experiments/mpi/plots/piControl/files/moments.jpg'
-plt.savefig(filepath, dpi=300, bbox_inches='tight')
-plt.close()
+if __name__ == "__main__":
+    main()

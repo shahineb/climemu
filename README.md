@@ -6,7 +6,7 @@ This repository contains the implementation for the paper **"Score-based generat
 
 ## Example
 
-Add example directory
+_Add instructions on how to download model files and draw samples from the emulator with the example scripts. (:warning: Model files are meant for usage and trained on the full set of SSPs, to reproduce paper results follow instructions)_
 
 
 ## Project Structure
