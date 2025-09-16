@@ -3,6 +3,8 @@ import os
 import xarray as xr
 import numpy as np
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from dask.diagnostics import ProgressBar
 from ...data import load_dataset
 
@@ -92,6 +94,88 @@ def generate_patterns(test_dataset, time_mask=None):
     nlon = len(test_dataset.cmip6data.lon)
     patterns = patterns.reshape(-1, nlat, nlon)
     return patterns
+
+
+def setup_figure(width_ratios, height_ratios, width_multiplier=1.0, height_multiplier=1.0, wspace=0.05, hspace=0.05):
+    """Setup figure with GridSpec and return figure and gridspec objects.
+    
+    Args:
+        width_ratios: List of width ratios for columns
+        height_ratios: List of height ratios for rows
+        width_multiplier: Multiplier for figure width
+        height_multiplier: Multiplier for figure height
+        wspace: Width spacing between subplots
+        hspace: Height spacing between subplots
+        
+    Returns:
+        tuple: (fig, gs) matplotlib figure and gridspec objects
+    """
+    nrow = len(height_ratios)
+    ncol = len(width_ratios)
+    nroweff = sum(height_ratios)
+    ncoleff = sum(width_ratios)
+    
+    fig = plt.figure(figsize=(width_multiplier * ncoleff, height_multiplier * nroweff))
+    gs = gridspec.GridSpec(
+        nrows=nrow,
+        ncols=ncol,
+        figure=fig,
+        width_ratios=width_ratios,
+        height_ratios=height_ratios,
+        hspace=hspace,
+        wspace=wspace
+    )
+    return fig, gs
+
+
+def save_plot(fig, output_dir, filename, dpi=300):
+    """Save plot to file.
+    
+    Args:
+        fig: Matplotlib figure object
+        output_dir: Directory to save the plot
+        filename: Name of the file to save
+        dpi: Resolution for saving
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    filepath = os.path.join(output_dir, filename)
+    fig.savefig(filepath, dpi=dpi, bbox_inches='tight')
+    plt.close(fig)
+
+
+def wrap_lon(ds):
+    """Convert longitude from 0-360 to -180-180 range.
+    
+    Args:
+        ds: xarray Dataset with longitude coordinates
+        
+    Returns:
+        xarray Dataset with wrapped longitude coordinates
+    """
+    # assumes ds.lon runs 0…360
+    lon360 = ds.lon.values
+    lon180 = ((lon360 + 180) % 360) - 180
+    ds = ds.assign_coords(lon=lon180).sortby("lon")
+    return ds
+
+
+def add_seasonal_coords(data):
+    """Add seasonal coordinate mapping to data.
+    
+    Args:
+        data: xarray Dataset with month coordinate
+        
+    Returns:
+        xarray Dataset with added season coordinate
+    """
+    month_to_season = {
+        12: "DJF", 1: "DJF", 2: "DJF",
+        3:  "MAM", 4:  "MAM", 5:  "MAM",
+        6:  "JJA", 7:  "JJA", 8:  "JJA",
+        9:  "SON", 10: "SON", 11: "SON"
+    }
+    seasons = np.array([month_to_season[m] for m in data['month'].values])
+    return data.assign_coords(season=("month", seasons))
 
 
 # Variable metadata
