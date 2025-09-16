@@ -2,8 +2,6 @@ import os
 import sys
 import numpy as np
 import xarray as xr
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
 import cartopy.crs as ccrs
 import seaborn as sns
 from scipy.stats import wasserstein_distance
@@ -14,10 +12,27 @@ if base_dir not in sys.path:
     sys.path.append(base_dir)
 
 from experiments.miroc.config import Config
-from experiments.miroc.plots.piControl.utils import VARIABLES, load_data
+from experiments.miroc.plots.piControl.utils import load_data, setup_figure, save_plot, wrap_lon, add_seasonal_coords
 
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+OUTPUT_DIR = 'experiments/miroc/plots/piControl/files'
+DPI = 300
+WIDTH_MULTIPLIER = 6.0
+HEIGHT_MULTIPLIER = 3.5
+WSPACE = 0.05
+HSPACE = 0.05
+
+
+# =============================================================================
+# COMMON FUNCTIONS
+# =============================================================================
 
 def compute_emd(foo, bar):
+    """Compute Earth Mover's Distance between two datasets."""
     emd = xr.apply_ufunc(
         wasserstein_distance,
         foo,
@@ -30,34 +45,8 @@ def compute_emd(foo, bar):
     return emd
 
 
-def wrap_lon(ds):
-    # assumes ds.lon runs 0…360
-    lon360 = ds.lon.values
-    lon180 = ((lon360 + 180) % 360) - 180
-    ds = ds.assign_coords(lon=lon180).sortby("lon")
-    return ds
-
-
-month_to_season = {
-    12: "DJF", 1: "DJF", 2: "DJF",
-    3:  "MAM", 4:  "MAM", 5:  "MAM",
-    6:  "JJA", 7:  "JJA", 8:  "JJA",
-    9:  "SON", 10: "SON", 11: "SON"
-}
-
-
-# %%
-config = Config()
-climatology, piControl_diffusion, piControl_cmip6 = load_data(config, in_memory=True)
-seasons = np.array([month_to_season[m] for m in piControl_diffusion['month'].values])
-piControl_cmip6 = piControl_cmip6.assign_coords(season=("month", seasons))
-piControl_diffusion = piControl_diffusion.assign_coords(season=("month", seasons))
-piControl_diffusion = piControl_diffusion + climatology
-
-
-
-# Compute max EMD to noise for sfcWind across seasons
 def get_plot_data(piControl_cmip6, piControl_diffusion):
+    """Compute max EMD to noise for sfcWind across seasons."""
     emd = dict()
     piControl_diffusion_flat = piControl_diffusion.stack(flat=('year', 'month'))
     piControl_cmip6_flat = piControl_cmip6.stack(flat=('year', 'month'))
@@ -70,96 +59,116 @@ def get_plot_data(piControl_cmip6, piControl_diffusion):
         emd[season] = compute_emd(emulator_data, esm_data) / σesm
     return emd
 
+
+def get_south_american_data(piControl_cmip6, piControl_diffusion):
+    """Compute sfcWind data over south american monsoon region."""
+    lon_range = slice(-54, -38)
+    lat_range = slice(-13, -5)
+    piControl_ds = wrap_lon(piControl_cmip6["sfcWind"]).sel(lat=lat_range, lon=lon_range)
+    emulator_ds = wrap_lon(piControl_diffusion["sfcWind"]).sel(lat=lat_range, lon=lon_range)
+    
+    sfcWind_data = piControl_ds.values.ravel()
+    sfcWind_emulator = emulator_ds.values.ravel()
+    
+    return sfcWind_data, sfcWind_emulator
+
+
+def get_quantile_data(piControl_cmip6):
+    """Find regions that have a strong concentration of zero windspeed signal."""
+    piControl_ds = piControl_cmip6["sfcWind"]
+    q10_ds = piControl_ds.quantile(0.1, dim=("year", "month")).compute()
+    return q10_ds
+
+
+# =============================================================================
+# DATA LOADING
+# =============================================================================
+
+config = Config()
+climatology, piControl_diffusion, piControl_cmip6 = load_data(config, in_memory=True)
+
+# Add seasonal coordinates
+piControl_diffusion = add_seasonal_coords(piControl_diffusion)
+piControl_cmip6 = add_seasonal_coords(piControl_cmip6)
+piControl_diffusion = piControl_diffusion + climatology
+
+# Compute data for plotting
 emd = get_plot_data(piControl_cmip6['sfcWind'] - climatology['sfcWind'], piControl_diffusion['sfcWind'])
 max_emd = xr.concat(list(emd.values()), dim="season").max(dim="season")
 
+sfcWind_data, sfcWind_emulator = get_south_american_data(piControl_cmip6, piControl_diffusion)
+q10_ds = get_quantile_data(piControl_cmip6)
 
 
 
-# Compute sfcWind data over south american moonsoon region
-lon_range = slice(-54, -38)
-lat_range = slice(-13, -5)
-piControl_ds = wrap_lon(piControl_cmip6["sfcWind"]).sel(lat=lat_range, lon=lon_range)
-emulator_ds = wrap_lon(piControl_diffusion["sfcWind"]).sel(lat=lat_range, lon=lon_range)
+# =============================================================================
+# PLOTTING
+# =============================================================================
 
-sfcWind_data = piControl_ds.values.ravel()
-sfcWind_emulator = emulator_ds.values.ravel()
-
-
-# Find regions that have a strong concentration of zero windspeed signal
-piControl_ds = piControl_cmip6["sfcWind"]
-q10_ds = piControl_ds.quantile(0.1, dim=("year", "month")).compute()
-
-
-
-# Plot
-width_ratios  = [0.7, 0.1, 1, 0.05, 0.08, 1, 0.05]
-height_ratios = [1]
-nrow = len(height_ratios)
-ncol = len(width_ratios)
-nroweff = sum(height_ratios)
-ncoleff = sum(width_ratios)
-
-fig = plt.figure(figsize=(6 * ncoleff, 3.5 * nroweff))
-gs = GridSpec(nrows=nrow,
-            ncols=ncol,
-            figure=fig,
-            width_ratios=width_ratios,
-            height_ratios=height_ratios,
-            hspace=0.05,
-            wspace=0.05)
-
-
-ax = fig.add_subplot(gs[0, 0])
-nbins = 2 * np.ceil(2 * len(sfcWind_data) ** (1 / 3)).astype(int)
-sns.histplot(sfcWind_data, ax=ax, kde=False, stat="density", bins=nbins, color="dodgerblue", alpha=0.6, edgecolor=None, label="MIROC6")
-nbins = 2 * np.ceil(2 * len(sfcWind_emulator) ** (1 / 3)).astype(int)
-sns.histplot(sfcWind_emulator, ax=ax, kde=False, stat="density", bins=nbins, color="tomato", alpha=0.6, edgecolor=None, label="Emulator")
-ax.set_yticks([])
-ax.set_yscale('log')
-ax.set_xlabel("[m/s]")
-ax.legend()
-ax.set_title("Windspeed distribution over \n South American Moonsoon region", weight="bold")
-
-ax = fig.add_subplot(gs[0, 2], projection=ccrs.Robinson())
-mesh = q10_ds.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), cmap="Greens", add_colorbar=False)
-ax.coastlines()
-ax.set_title("10th percentile of piControl windpseed", weight="bold")
-mesh.set_clim(0, 2)
-
-cax = fig.add_subplot(gs[0, 3])
-cbar = fig.colorbar(mesh,
-                    cax=cax,
-                    orientation='vertical', extend='max')
-cbar.set_label(f"[m/s]", labelpad=-1)
-pos = cax.get_position()
-new_width  = pos.width * 0.4    # thinner
-new_height = pos.height * 0.7   # shorter
-new_x0     = pos.x0 - 0.00      # move left
-new_y0     = pos.y0 + (pos.height - new_height) / 2  # recenter vertically
-cax.set_position([new_x0, new_y0, new_width, new_height])
-
-
-ax = fig.add_subplot(gs[0, 5], projection=ccrs.Robinson())
-mesh = max_emd.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), cmap="RdPu", add_colorbar=False)
-ax.coastlines()
-ax.set_title("Max. EMD-to-noise across seasons", weight="bold")
-mesh.set_clim(0, 1)
-
-cax = fig.add_subplot(gs[0, 6])
-cbar = fig.colorbar(mesh,
-                    cax=cax,
-                    orientation='vertical')
-cbar.ax.set_yticks([0, 1])
-cbar.set_label(f"[1]", labelpad=-1)
-pos = cax.get_position()
-new_width  = pos.width * 0.4    # thinner
-new_height = pos.height * 0.7   # shorter
-new_x0     = pos.x0 - 0.00      # move left
-new_y0     = pos.y0 + (pos.height - new_height) / 2  # recenter vertically
-cax.set_position([new_x0, new_y0, new_width, new_height])
+def create_artefact_plot():
+    """Create the windspeed artefact plot."""
+    width_ratios = [0.7, 0.1, 1, 0.05, 0.08, 1, 0.05]
+    height_ratios = [1]
+    
+    fig, gs = setup_figure(width_ratios, height_ratios, WIDTH_MULTIPLIER, HEIGHT_MULTIPLIER, WSPACE, HSPACE)
+    
+    # Windspeed distribution histogram
+    ax = fig.add_subplot(gs[0, 0])
+    nbins = 2 * np.ceil(2 * len(sfcWind_data) ** (1 / 3)).astype(int)
+    sns.histplot(sfcWind_data, ax=ax, kde=False, stat="density", bins=nbins, color="dodgerblue", alpha=0.6, edgecolor=None, label="MIROC6")
+    nbins = 2 * np.ceil(2 * len(sfcWind_emulator) ** (1 / 3)).astype(int)
+    sns.histplot(sfcWind_emulator, ax=ax, kde=False, stat="density", bins=nbins, color="tomato", alpha=0.6, edgecolor=None, label="Emulator")
+    ax.set_yticks([])
+    ax.set_yscale('log')
+    ax.set_xlabel("[m/s]")
+    ax.legend()
+    ax.set_title("Windspeed distribution over \n South American Monsoon region", weight="bold")
+    
+    # 10th percentile map
+    ax = fig.add_subplot(gs[0, 2], projection=ccrs.Robinson())
+    mesh = q10_ds.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), cmap="Greens", add_colorbar=False)
+    ax.coastlines()
+    ax.set_title("10th percentile of piControl windspeed", weight="bold")
+    mesh.set_clim(0, 2)
+    
+    # Colorbar for 10th percentile
+    cax = fig.add_subplot(gs[0, 3])
+    cbar = fig.colorbar(mesh, cax=cax, orientation='vertical', extend='max')
+    cbar.set_label("[m/s]", labelpad=-1)
+    pos = cax.get_position()
+    new_width = pos.width * 0.4    # thinner
+    new_height = pos.height * 0.7   # shorter
+    new_x0 = pos.x0 - 0.00      # move left
+    new_y0 = pos.y0 + (pos.height - new_height) / 2  # recenter vertically
+    cax.set_position([new_x0, new_y0, new_width, new_height])
+    
+    # Max EMD map
+    ax = fig.add_subplot(gs[0, 5], projection=ccrs.Robinson())
+    mesh = max_emd.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), cmap="RdPu", add_colorbar=False)
+    ax.coastlines()
+    ax.set_title("Max. EMD-to-noise across seasons", weight="bold")
+    mesh.set_clim(0, 1)
+    
+    # Colorbar for EMD
+    cax = fig.add_subplot(gs[0, 6])
+    cbar = fig.colorbar(mesh, cax=cax, orientation='vertical')
+    cbar.ax.set_yticks([0, 1])
+    cbar.set_label("[1]", labelpad=-1)
+    pos = cax.get_position()
+    new_width = pos.width * 0.4    # thinner
+    new_height = pos.height * 0.7   # shorter
+    new_x0 = pos.x0 - 0.00      # move left
+    new_y0 = pos.y0 + (pos.height - new_height) / 2  # recenter vertically
+    cax.set_position([new_x0, new_y0, new_width, new_height])
+    
+    return fig
 
 
-filepath = f'experiments/miroc/plots/piControl/files/windspeed_discrepancy.jpg'
-plt.savefig(filepath, dpi=300, bbox_inches='tight')
-plt.close()
+def main():
+    """Main function to generate artefact plot."""
+    fig = create_artefact_plot()
+    save_plot(fig, OUTPUT_DIR, 'windspeed_discrepancy.jpg', dpi=DPI)
+
+
+if __name__ == "__main__":
+    main()

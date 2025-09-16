@@ -2,6 +2,8 @@
 import os
 import xarray as xr
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 from dask.diagnostics import ProgressBar
 
 # Module-level path configuration
@@ -96,3 +98,45 @@ VARIABLES = {
         'color': 'cornflowerblue'
     }
 }
+
+# =============================================================================
+# COMMON PLOTTING FUNCTIONS
+# =============================================================================
+
+def setup_figure(width_ratios, height_ratios, width_multiplier=1.0, height_multiplier=1.0, wspace=0.01, hspace=0.01):
+    """Standard figure setup with configurable width and height multipliers."""
+    nrow, ncol = len(height_ratios), len(width_ratios)
+    fig = plt.figure(figsize=(width_multiplier * sum(width_ratios), 
+                             height_multiplier * sum(height_ratios)))
+    gs = GridSpec(nrow, ncol, figure=fig, width_ratios=width_ratios, 
+                  height_ratios=height_ratios, hspace=hspace, wspace=wspace)
+    return fig, gs
+
+def save_plot(fig, output_dir, filename, dpi=300, show=False):
+    """Standard plot saving with optional display."""
+    if show:
+        plt.show()
+    else:
+        os.makedirs(output_dir, exist_ok=True)
+        filepath = os.path.join(output_dir, filename)
+        fig.savefig(filepath, dpi=dpi, bbox_inches='tight')
+        print(f"Plot saved to {filepath}")
+        plt.close()
+
+def wrap_lon(ds):
+    """Convert longitude from 0-360 to -180-180 range."""
+    lon360 = ds.lon.values
+    lon180 = ((lon360 + 180) % 360) - 180
+    ds = ds.assign_coords(lon=lon180).sortby("lon")
+    return ds
+
+def add_seasonal_coords(data):
+    """Add seasonal coordinate mapping to data."""
+    month_to_season = {
+        12: "DJF", 1: "DJF", 2: "DJF",
+        3:  "MAM", 4:  "MAM", 5:  "MAM",
+        6:  "JJA", 7:  "JJA", 8:  "JJA",
+        9:  "SON", 10: "SON", 11: "SON"
+    }
+    seasons = np.array([month_to_season[m] for m in data['month'].values])
+    return data.assign_coords(season=("month", seasons))
