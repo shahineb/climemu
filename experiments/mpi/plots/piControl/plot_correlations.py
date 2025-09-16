@@ -22,6 +22,8 @@ OUTPUT_DIR = 'experiments/mpi/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 5.0
 HEIGHT_MULTIPLIER = 3.0
+WSPACE = 0.01
+HSPACE = 0.01
 
 # =============================================================================
 # COMMON FUNCTIONS
@@ -140,7 +142,7 @@ def create_correlations_plot():
     width_ratios = [0.05, 1, 1, 1, 1, 0.01, 0.05]
     height_ratios = [0.05, 1, 1, 1, 1]
     
-    fig, gs = setup_figure(width_ratios, height_ratios, WIDTH_MULTIPLIER, HEIGHT_MULTIPLIER)
+    fig, gs = setup_figure(width_ratios, height_ratios, WIDTH_MULTIPLIER, HEIGHT_MULTIPLIER, WSPACE, HSPACE)
     
     # Add background and labels
     add_triangle_background(fig, gs)

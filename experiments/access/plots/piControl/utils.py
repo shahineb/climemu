@@ -32,13 +32,13 @@ def load_data(config, in_memory=False):
     climatology_tas = climatology_tas.assign_coords(month=('time', months)).swap_dims({'time': 'month'}).drop_vars('time')
 
     climatology_pr = xr.open_dataset(os.path.join(base_path, f"pr_climatology/Amon/pr_Amon_{CLIMATOLOGY_MODEL}_piControl_{CLIMATOLOGY_MEMBER}_monthly_climatology.nc"))
-    climatology_pr = climatology_pr.assign_coords(month=('time', months)).swap_dims({'time', 'month'}).drop_vars('time') * 86400
+    climatology_pr = climatology_pr.assign_coords(month=('time', months)).swap_dims({'time': 'month'}).drop_vars('time') * 86400
 
     climatology_hurs = xr.open_dataset(os.path.join(base_path, f"hurs_climatology/Amon/hurs_Amon_{CLIMATOLOGY_MODEL}_piControl_{CLIMATOLOGY_MEMBER}_monthly_climatology.nc"))
-    climatology_hurs = climatology_hurs.assign_coords(month=('time', months)).swap_dims({'time', 'month'}).drop_vars('time')
+    climatology_hurs = climatology_hurs.assign_coords(month=('time', months)).swap_dims({'time': 'month'}).drop_vars('time')
 
     climatology_sfcWind = xr.open_dataset(os.path.join(base_path, f"sfcWind_climatology/Amon/sfcWind_Amon_{CLIMATOLOGY_MODEL}_piControl_{CLIMATOLOGY_MEMBER}_monthly_climatology.nc"))
-    climatology_sfcWind = climatology_sfcWind.assign_coords(month=('time', months)).swap_dims({'time', 'month'}).drop_vars('time')
+    climatology_sfcWind = climatology_sfcWind.assign_coords(month=('time', months)).swap_dims({'time': 'month'}).drop_vars('time')
 
     climatology = xr.merge([climatology_tas, climatology_pr, climatology_hurs, climatology_sfcWind])
 

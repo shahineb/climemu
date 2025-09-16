@@ -21,7 +21,7 @@ OUTPUT_DIR = 'experiments/miroc/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 5.0
 HEIGHT_MULTIPLIER = 3.0
-WSPACE = 0.05
+WSPACE = 0.01
 HSPACE = 0.05
 RANDOM_SEED = 5  # For reproducible sample selection
 
@@ -182,7 +182,7 @@ def create_power_spectra_plot():
 
 def main():
     """Main function to generate power spectra plot."""
-    fig = create_power_spectra_plot(emulator, cmip6, k, config)
+    fig = create_power_spectra_plot()
     save_plot(fig, OUTPUT_DIR, 'psd.jpg', dpi=DPI)
 
 if __name__ == "__main__":

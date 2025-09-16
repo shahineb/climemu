@@ -20,8 +20,8 @@ OUTPUT_DIR = 'experiments/miroc/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 5.0
 HEIGHT_MULTIPLIER = 3.0
-WSPACE = 0.05
-HSPACE = 0.05
+WSPACE = 0.01
+HSPACE = 0.01
 
 # =============================================================================
 # COMMON FUNCTIONS

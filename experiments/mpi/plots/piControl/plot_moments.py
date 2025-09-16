@@ -147,7 +147,7 @@ def plot_variable(fig, gs, var, i):
     cbar = fig.colorbar(mesh1,
                         cax=cax,
                         orientation='horizontal',
-                        extend='both')
+                        extend='max')
     cbar.locator = ticker.MaxNLocator(nbins=3, integer=True)
     cbar.update_ticks()
     cax.xaxis.set_ticks_position('top')
