@@ -57,10 +57,10 @@ def setup_regions():
     return ar6, domains, domain_names, abbrevs
 
 
-def compute_portrait_data(target_data, pred_data, periods, seasons, domains, domain_names):
+def compute_portrait_data(target_data, pred_data, periods, seasons, ar6, domains, domain_names):
     """Compute EMD-to-noise ratio data for portrait plot."""
-    n_iterations = len(periods) * len(VARIABLES) * len(domains[0].regions) * len(seasons)
-    portrait_data = np.zeros((len(periods), len(VARIABLES), len(domains[0].regions), 4))
+    n_iterations = len(periods) * len(VARIABLES) * len(ar6) * len(seasons)
+    portrait_data = np.zeros((len(periods), len(VARIABLES), len(ar6), 4))
     
     with tqdm(total=n_iterations) as pbar:  
         for i, period in enumerate(periods):
@@ -106,7 +106,7 @@ periods = [slice("2040-01", "2060-12"), slice("2080-01", "2100-12")]
 seasons = ["DJF", "MAM", "JJA", "SON"]
 
 # Compute portrait data
-portrait_data = compute_portrait_data(target_data, pred_data, periods, seasons, domains, domain_names)
+portrait_data = compute_portrait_data(target_data, pred_data, periods, seasons, ar6, domains, domain_names)
 
 
 # =============================================================================
