@@ -57,7 +57,7 @@ class TrainingConfig:
     Defines hyperparameters, logging intervals, and output paths.
     """
     batch_size: int = 32  # Number of samples per batch
-    learning_rate: float = 1e-4  # Adam optimizer learning rate
+    learning_rate: float = 3e-4  # Adam optimizer learning rate
     ema_decay: float = 0.999  # Exponential moving average decay
     epochs: int = 10  # Number of training epochs
     log_interval: int = 20  # Steps between metric logging
@@ -92,7 +92,7 @@ class SamplingConfig:
     n_samples: int = 50  # Number of samples to generate per test point
     batch_size: int = 2  # Batch size for evaluation
     random_seed: int = 2100  # Seed for reproducibility
-    output_dir: str = f"/orcd/data/raffaele/001/shahineb/FastImpact/experiments/{EXPERIMENT_NAME}/outputs"  # Output directory for inference
+    output_dir: str = f"/orcd/data/raffaele/001/shahineb/jax-esm-emulation/experiments/{EXPERIMENT_NAME}/outputs"  # Output directory for inference
 
 
 @dataclass
