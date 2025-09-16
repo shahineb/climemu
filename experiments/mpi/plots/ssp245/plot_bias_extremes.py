@@ -58,11 +58,10 @@ def setup_regions():
     return ar6, domains, domain_names, abbrevs
 
 
-def compute_bias_data(target_data, pred_data, qlevels, seasons, seasons_month, domains, domain_names):
+def compute_bias_data(target_data, pred_data, qlevels, seasons, seasons_month, ar6, domains, domain_names):
     """Compute relative bias data for extreme quantiles."""
-    n_iterations = len(VARIABLES) * len(domains[0].regions) * len(seasons)
-    portrait_data = np.ones((len(qlevels), len(VARIABLES), len(domains[0].regions), 4))
-    portrait_data[:, 1] = 2  # Set precipitation to 2 (special case)
+    n_iterations = len(VARIABLES) * len(ar6) * len(seasons)
+    portrait_data = np.ones((len(qlevels), len(VARIABLES), len(ar6), 4))
     
     with tqdm(total=n_iterations) as pbar:  
         for j, var in enumerate(VARIABLES.keys()):
@@ -114,7 +113,7 @@ seasons = ["DJF", "MAM", "JJA", "SON"]
 seasons_month = {"DJF": [12, 1, 2], "MAM": [3, 4, 5], "JJA": [6, 7, 8], "SON": [9, 10, 11]}
 
 # Compute bias data
-portrait_data = compute_bias_data(target_data, pred_data, qlevels, seasons, seasons_month, domains, domain_names)
+portrait_data = compute_bias_data(target_data, pred_data, qlevels, seasons, seasons_month, ar6, domains, domain_names)
 
 
 # =============================================================================
@@ -250,7 +249,7 @@ def create_bias_extremes_plot():
     norm = mcolors.Normalize(vmin=-100 * vmax, vmax=100 * vmax)
     sm = cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    cbar = fig.colorbar(sm, cax=cax)
+    cbar = fig.colorbar(sm, cax=cax, extend="both")
     cbar.set_label('Relative bias [%]')
     
     # Add season legend

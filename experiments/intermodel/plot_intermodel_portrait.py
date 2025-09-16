@@ -24,7 +24,7 @@ from experiments.access.config import Config as ACCESSConfig
 from experiments.mpi.plots.ssp245.utils import load_data as load_mpi
 from experiments.miroc.plots.ssp245.utils import load_data as load_miroc
 from experiments.access.plots.ssp245.utils import load_data as load_access
-from experiments.intermodel.plots.ssp245.utils import setup_figure, save_plot
+from experiments.intermodel.utils import setup_figure, save_plot
 
 
 # =============================================================================

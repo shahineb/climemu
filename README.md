@@ -1,14 +1,16 @@
 # ESM Emulation with diffusion models in JAX
 
-This repository contains the implementation for the paper **"Score-based generative emulation of impact-relevant earth system model outputs"**. Codebase allows to run emulators of monthly averaged near-surface temperature, precipitation, relative humidity, windspeed for MPI-ESM1-2-LR, MIROC6, ACCESS-ESM1-5. See [Installation](#usage) instructions.
+This repository contains the implementation for the paper **"Score-based generative emulation of impact-relevant earth system model outputs"**. Codebase allows to run emulators of monthly averaged near-surface temperature, precipitation, relative humidity, windspeed for MPI-ESM1-2-LR, MIROC6, ACCESS-ESM1-5. See [Installation](#instructions) instructions.
 
 
 
-## Example
+## Usage
 
-:warning:
 
-_Add instructions on how to download model files and draw samples from the emulator with the example scripts. (_:warning:_Model files are meant for usage and trained on the full set of SSPs, to reproduce paper results follow instructions)_
+_Add instructions on how to download model files and draw samples from the emulator with the example scripts._
+
+
+:warning: _Default model files for usage are trained on the full set of SSPs. To reproduce paper results use `which='paper'` or follow [instructions](#instructions)_
 
 
 ## Project Structure
@@ -19,9 +21,9 @@ _Add instructions on how to download model files and draw samples from the emula
 │   └── utils/             # Utility functions
 │
 └── experiments/           # Experiment-specific code
-    ├── access/            # ACCESS-ESM1-5 emulator
-    ├── miroc/             # MIROC6 emulator
-    └── mpi/               # MPI-ESM1-2-LR emulator
+    ├── access/            # ACCESS-ESM1-5 emulation
+    ├── miroc/             # MIROC6 emulation
+    └── mpi/               # MPI-ESM1-2-LR emulation
         ├── main.py        # Training script
         ├── trainer.py     # Training loop
         ├── data.py        # Data loading and preprocessing
@@ -31,7 +33,8 @@ _Add instructions on how to download model files and draw samples from the emula
 
 
 
-## Usage
+
+## Instructions
 Instructions use [uv](https://docs.astral.sh/uv/) for Python package and project management. Code tested on Python 3.12. Training and inference require GPU support.
 
 ### Installation
