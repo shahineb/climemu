@@ -18,7 +18,7 @@ import examples.utils as utils
 
 def build_nn(config):
     # Load edges
-    edges_to_healpix, edges_to_latlon = utils.load_edges(config.data.edges_path)
+    edges_to_healpix, edges_to_latlon = utils.load_edges(config.model.edges_path)
 
     # Initialize the neural network
     nn = HealPIXUNet(input_size=config.model.input_size,
@@ -34,7 +34,7 @@ def build_nn(config):
     utils.print_parameter_count(nn)
     return nn
 
-def build_schedule(config, σmax):
+def build_schedule(config):
     σmax = utils.load_σmax(config.data.sigma_max_path)
     schedule = ContinuousVESchedule(config.schedule.sigma_min, σmax)
     return schedule
@@ -44,18 +44,20 @@ def build_generative_model(config, n_samples, n_steps):
     nn = build_nn(config)
     schedule = build_schedule(config)
     μ, σ = utils.load_normalization(config.data.norm_stats_path)
+    output_size = (config.model.out_channels, config.model.input_size[1], config.model.input_size[2])
     generative_model = partial(utils.draw_samples_single,
                                model=nn,
                                schedule=schedule,
                                n_samples=n_samples,
                                n_steps=n_steps,
+                               output_size=output_size,
                                μ=μ, σ=σ)
     return generative_model
 
 def build_emulator(config, n_samples=1, n_steps=30):
     # Load generative model and pattern scaling coefficients
     generative_model = build_generative_model(config, n_samples, n_steps)
-    β = utils.load_β(config.data.β_path)
+    β = utils.load_β(config.data.pattern_scaling_path)
 
     # dry run to compile
     nlat, nlon = config.model.input_size[1], config.model.input_size[2]
@@ -84,13 +86,12 @@ def parse_args():
 def main():
     args = parse_args()
     config = Config()
-    emulator = build_emulator(config, n_samples=args.n_samples, n_steps=args.n_steps)
+    emulator = build_emulator(config, 1, 30)
 
     ΔT = args.gmst
     month = args.month
     seed = args.seed
     samples = emulator(ΔT=ΔT, month=month, seed=seed)
-
 
     # Save samples to a NetCDF file
     nlat, nlon = config.model.input_size[1], config.model.input_size[2]
@@ -110,5 +111,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
-
