@@ -242,7 +242,7 @@ def create_portrait_plot():
     norm = mcolors.Normalize(vmin=0, vmax=1)
     sm = cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    cbar = fig.colorbar(sm, cax=cax)
+    cbar = fig.colorbar(sm, cax=cax, extend="max")
     cbar.ax.set_yticks([0, 1])
     cbar.set_label('EMD-to-noise ratio [1]')
     
