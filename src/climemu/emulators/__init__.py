@@ -1,0 +1,1 @@
+from .bouabid2025 import Bouabid2025Emulator

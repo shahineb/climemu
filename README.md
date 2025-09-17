@@ -6,11 +6,24 @@ This repository contains the implementation for the paper **"Score-based generat
 
 ## Usage
 
+```python
+from src import climemu
 
-_Add instructions on how to download model files and draw samples from the emulator with the example scripts._
+# Instantiate emulator
+emulator = climemu.build_emulator("MPI-ESM1-2-LR")
 
+# Download pretrained weights and compile (~1min)
+emulator.load()
+emulator.compile()
 
-:warning: _Default model files for usage are trained on the full set of SSPs. To reproduce paper results use `which='paper'` or follow [instructions](#instructions)_
+# Generate samples
+sample = emulator(gmst=2,       # Global Mean Surface Temperature (°C) anomaly wrt piControl
+                  month=3,      # Month index (1-12)
+                  seed=0,       # Random seed for reproducibilit
+                  xarray=True)  # Return sample as an xarray dataset
+```
+
+:warning: _Default model files for usage are trained on the full set of SSPs. To reproduce paper results use `climemu.build_emulator("MPI-ESM1-2-LR", which="paper")'` or follow [instructions](#instructions)_.
 
 
 ## Project Structure
