@@ -120,7 +120,8 @@ def compute_normalization(
 
     # Create a random subset of the dataset
     dataset_size = len(piControl_dataset)
-    subset_size = min(max_samples, dataset_size // 6)  # ~6 lag month autocorrelation
+    # subset_size = min(max_samples, dataset_size // 6)  # ~6 lag month autocorrelation
+    subset_size = min(max_samples, dataset_size)
 
     # Generate random indices
     key = jr.PRNGKey(seed)
@@ -147,6 +148,7 @@ def compute_normalization(
     μ = x.mean(axis=0)
 
     # Compute stddev with shrinkage estimator to prevent σ~0
+    # σ = x.std(axis=0)
     N = subset_size
     λ = N / 10
     σ2 = x.var(axis=0, ddof=1)
@@ -169,7 +171,7 @@ def estimate_sigma_max(
     sigmas: Optional[np.ndarray],
     subset_size: int = 10000,
     seed: int = 42,
-    alpha: float = 0.01,
+    alpha: float = 0.05,
     sigma_max_path: str = None,
     force_recompute: bool = False
 ) -> float:
@@ -219,15 +221,25 @@ def estimate_sigma_max(
     sigma_max = -np.inf
     N = len(sigmas)
     vmax = np.max(sigmas)
+    reps = 30
     with tqdm(total=len(dummy_loader)) as pbar:
         for batch in dummy_loader:
+            # Flatten sample
             x = utils.process_batch(batch, μ, σ)[:, :-ctx_size]
             x0 = x.ravel()
+
+            # Iterate over noise levels
             for sigma in sigmas:
-                xn = x0 + sigma * np.random.randn(*x0.shape)
-                xn = (xn - xn.mean()) / xn.std()
-                _, p = stats.normaltest(xn)
-                if p >= alpha:
+                # Compute frequency at which we fail to reject normality
+                count = 0
+                for _ in range(reps):
+                    xn = x0 + sigma * np.random.randn(*x0.shape)
+                    _, p = stats.normaltest(xn)
+                    count += (p >= alpha)
+                fail_to_reject_rate = count / reps
+
+                # If >80% then update σmax and move to next sample
+                if fail_to_reject_rate > 0.8:
                     sigma_max = max(sigma_max, sigma)
                     sigmas = np.linspace(sigma_max, vmax, N)
                     pbar.set_description(f"σmax {round(sigma_max, 2)}")
@@ -237,8 +249,7 @@ def estimate_sigma_max(
                 sigma_max = vmax
                 break
 
-
-    # Double it to prevent signal leak
+    # Double it to prevent signal leak (just to be safe)
     sigma_max = 2 * sigma_max
 
     # Save and return
