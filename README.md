@@ -7,10 +7,10 @@ This repository contains the implementation for the paper **"Score-based generat
 ## Usage
 
 ```python
-from src import climemu
+from src import clemu
 
 # Instantiate emulator
-emulator = climemu.build_emulator("MPI-ESM1-2-LR")
+emulator = clemu.build_emulator("MPI-ESM1-2-LR")
 
 # Download pretrained weights and compile (~1min)
 emulator.load()
@@ -23,7 +23,7 @@ samples = emulator(gmst=2,       # Global Mean Surface Temperature (°C) anomaly
                    xarray=True)  # Return sample as an xarray dataset
 ```
 
-:warning: _Default model files for usage are trained on the full set of SSPs. To reproduce paper results use `climemu.build_emulator("MPI-ESM1-2-LR", which="paper")'` or follow [instructions](#instructions)_.
+:warning: _Default model files for usage are trained on the full set of SSPs. To reproduce paper results use `clemu.build_emulator("MPI-ESM1-2-LR", which="paper")'` or follow [instructions](#instructions)_.
 
 
 ## Project Structure
