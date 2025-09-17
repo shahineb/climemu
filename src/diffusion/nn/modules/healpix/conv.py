@@ -6,7 +6,6 @@ import jax.numpy as jnp
 import jax.random as jr
 import equinox as eqx
 import einops
-import healpy as hp
 from .padding import pad
 
 
@@ -55,7 +54,7 @@ class HealPIXConv(eqx.Module):
         self.padding = padding
 
     def __call__(self, x):
-        nside = hp.npix2nside(x.shape[-1])
+        nside = int(jnp.sqrt(x.shape[-1] / 12).item())
         x = einops.rearrange(x, "c (f x y) -> (c) f x y", y=nside, x=nside, f=12)
         x = pad(x, self.padding)
         x = einops.rearrange(x, "(c) f x y -> (f) c x y", f=12, c=self.in_channels)
@@ -110,7 +109,7 @@ class HealPIXConvTranspose(eqx.Module):
         self.padding = padding
 
     def __call__(self, x):
-        nside = hp.npix2nside(x.shape[-1])
+        nside = int(jnp.sqrt(x.shape[-1] / 12).item())
         x = einops.rearrange(x, "c (f x y) -> (c) f x y", y=nside, x=nside, f=12)
         x = pad(x, 1)
         x = einops.rearrange(x, "(c) f x y -> (f) c x y", f=12, c=self.in_channels)

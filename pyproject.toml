@@ -1,29 +1,55 @@
 [project]
-name = "jax-esm-emulation"
+name = "climemu"
 version = "0.1.0"
-description = "Add your description here"
+description = "Score-based generative emulation of impact-relevant earth system model outputs"
 readme = "README.md"
+authors = [
+    { name = "Shahine Bouabid", email = "shahineb@mit.edu" },
+]
 requires-python = ">=3.12"
+license = { text = "MIT" }
 dependencies = [
-    "cartopy>=0.25.0",
     "dask>=2025.7.0",
     "diffrax>=0.7.0",
     "einops>=0.8.1",
     "equinox>=0.13.0",
-    "healpy>=1.18.1",
-    "jax[cuda12]>=0.7.1",
-    "matplotlib>=3.10.6",
+    "huggingface-hub>=0.35.0",
+    "jax>=0.7.1",
     "netcdf4>=1.7.2",
     "numpy>=2.3.2",
     "optax>=0.2.5",
-    "pandas>=2.3.2",
-    "pyshtools>=4.13.1",
-    "regionmask>=0.13.0",
     "scikit-learn>=1.7.1",
     "scipy>=1.16.1",
-    "seaborn>=0.13.2",
-    "torch>=2.8.0",
     "tqdm>=4.67.1",
-    "wandb>=0.21.3",
     "xarray>=2025.9.0",
 ]
+
+[project.optional-dependencies]
+gpu = [
+    "jax[cuda12]>=0.7.1"
+]
+train = [
+    "torch>=2.8.0",
+    "healpy>=1.18.1",
+    "wandb>=0.21.3",
+]
+plots = [
+    "matplotlib>=3.10.6",
+    "seaborn>=0.13.2",
+    "cartopy>=0.25.0",
+    "regionmask>=0.13.0",
+    "pandas>=2.3.2",
+    "pyshtools>=4.13.1",
+]
+
+
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

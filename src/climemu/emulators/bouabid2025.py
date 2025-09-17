@@ -48,7 +48,7 @@ class Bouabid2025Emulator(GriddedEmulator):
         samples = self.generative_model(pattern=pattern, key=key)
 
         # Convert to xarray Dataset
-        if as_xarray:
+        if xarray:
             samples = xr.Dataset(
                 {
                     var: (("member", "lat", "lon"), samples[:, i, :, :])
