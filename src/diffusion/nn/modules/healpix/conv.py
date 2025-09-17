@@ -1,6 +1,7 @@
 """HEALPix-specific convolution modules.
 """
 from typing import Optional, Any
+from math import sqrt
 import jax
 import jax.numpy as jnp
 import jax.random as jr
@@ -54,7 +55,7 @@ class HealPIXConv(eqx.Module):
         self.padding = padding
 
     def __call__(self, x):
-        nside = int(jnp.sqrt(x.shape[-1] / 12).item())
+        nside = int(sqrt((x.shape[-1] / 12)))
         x = einops.rearrange(x, "c (f x y) -> (c) f x y", y=nside, x=nside, f=12)
         x = pad(x, self.padding)
         x = einops.rearrange(x, "(c) f x y -> (f) c x y", f=12, c=self.in_channels)
@@ -109,7 +110,7 @@ class HealPIXConvTranspose(eqx.Module):
         self.padding = padding
 
     def __call__(self, x):
-        nside = int(jnp.sqrt(x.shape[-1] / 12).item())
+        nside = int(sqrt((x.shape[-1] / 12)))
         x = einops.rearrange(x, "c (f x y) -> (c) f x y", y=nside, x=nside, f=12)
         x = pad(x, 1)
         x = einops.rearrange(x, "(c) f x y -> (f) c x y", f=12, c=self.in_channels)
