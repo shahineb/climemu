@@ -160,7 +160,7 @@ def compute_normalization(
     if norm_stats_path:
         print(f"Saving normalization statistics to {norm_stats_path}")
         jnp.savez(norm_stats_path, μ=μ, σ=σ)
-    return μ, σ 
+    return μ, σ
 
 
 def estimate_sigma_max(
@@ -168,7 +168,9 @@ def estimate_sigma_max(
     μ: jnp.ndarray,
     σ: jnp.ndarray,
     ctx_size: int,
-    sigmas: Optional[np.ndarray],
+    search_interval: List[float],
+    stepsize: int = 1,
+    reps: int = 30,
     subset_size: int = 10000,
     seed: int = 42,
     alpha: float = 0.05,
@@ -218,10 +220,6 @@ def estimate_sigma_max(
     )
 
     # Find smallest σmax that fails to reject normality test over all samples
-    sigma_max = -np.inf
-    N = len(sigmas)
-    vmax = np.max(sigmas)
-    reps = 30
     with tqdm(total=len(dummy_loader)) as pbar:
         for batch in dummy_loader:
             # Flatten sample
@@ -229,7 +227,8 @@ def estimate_sigma_max(
             x0 = x.ravel()
 
             # Iterate over noise levels
-            for sigma in sigmas:
+            sigma = search_interval[0]
+            while sigma < search_interval[1]:
                 # Compute frequency at which we fail to reject normality
                 count = 0
                 for _ in range(reps):
@@ -238,19 +237,19 @@ def estimate_sigma_max(
                     count += (p >= alpha)
                 fail_to_reject_rate = count / reps
 
-                # If >80% then update σmax and move to next sample
+                # If >80% then update search interval and move to next sample
                 if fail_to_reject_rate > 0.8:
-                    sigma_max = max(sigma_max, sigma)
-                    sigmas = np.linspace(sigma_max, vmax, N)
-                    pbar.set_description(f"σmax {round(sigma_max, 2)}")
+                    search_interval[0] = sigma
+                    pbar.set_description(f"σmax = {round(sigma, 2)}")
                     break
+
+                # Else increase sigma
+                else:
+                    sigma += stepsize
             _ = pbar.update(1)
-            if np.isclose(sigma_max, vmax, atol=1):
-                sigma_max = vmax
-                break
 
     # Double it to prevent signal leak (just to be safe)
-    sigma_max = 2 * sigma_max
+    sigma_max = 2 * search_interval[0]
 
     # Save and return
     if sigma_max_path:
