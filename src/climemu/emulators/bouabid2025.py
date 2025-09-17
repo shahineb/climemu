@@ -28,7 +28,7 @@ class Bouabid2025Emulator(GriddedEmulator):
         # Load the generative model precursor
         self.precursor = self._load_precursor()
 
-    def compile(self, n_samples, n_steps):
+    def compile(self, n_samples, n_steps=30):
         # Fix number of samples and steps for generation
         self.generative_model = partial(self.precursor,
                                         n_samples=n_samples,

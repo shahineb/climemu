@@ -14,13 +14,13 @@ emulator = climemu.build_emulator("MPI-ESM1-2-LR")
 
 # Download pretrained weights and compile (~1min)
 emulator.load()
-emulator.compile()
+emulator.compile(n_samples=5)   # Nb of samples generated at each function call
 
 # Generate samples
-sample = emulator(gmst=2,       # Global Mean Surface Temperature (°C) anomaly wrt piControl
-                  month=3,      # Month index (1-12)
-                  seed=0,       # Random seed for reproducibilit
-                  xarray=True)  # Return sample as an xarray dataset
+samples = emulator(gmst=2,       # Global Mean Surface Temperature (°C) anomaly wrt piControl
+                   month=3,      # Month index (1-12)
+                   seed=0,       # Random seed for reproducibility
+                   xarray=True)  # Return sample as an xarray dataset
 ```
 
 :warning: _Default model files for usage are trained on the full set of SSPs. To reproduce paper results use `climemu.build_emulator("MPI-ESM1-2-LR", which="paper")'` or follow [instructions](#instructions)_.
