@@ -120,8 +120,8 @@ def compute_normalization(
 
     # Create a random subset of the dataset
     dataset_size = len(piControl_dataset)
-    # subset_size = min(max_samples, dataset_size // 6)  # ~6 lag month autocorrelation
-    subset_size = min(max_samples, dataset_size)
+    subset_size = min(max_samples, dataset_size // 6)  # ~6 lag month autocorrelation
+    # subset_size = min(max_samples, dataset_size)
 
     # Generate random indices
     key = jr.PRNGKey(seed)
@@ -143,19 +143,11 @@ def compute_normalization(
         sample_shape = (1 + sample_shape[1], sample_shape[2], sample_shape[3])
         x.append(utils.process_batch(batch, jnp.zeros(sample_shape), jnp.ones(sample_shape)))
     
-    # Compute mean across all batches
+    # Compute mean and stddev across all batches
     x = jnp.concatenate(x)
     μ = x.mean(axis=0)
+    σ = x.std(axis=0)
 
-    # Compute stddev with shrinkage estimator to prevent σ~0
-    # σ = x.std(axis=0)
-    N = subset_size
-    λ = N / 10
-    σ2 = x.var(axis=0, ddof=1)
-    σ2glob = x.var(axis=(0, 2, 3), ddof=1)[:, None, None]
-    σ2shrink = ((N - 1) * σ2 + λ * σ2glob) / (N - 1 + λ)
-    σ = jnp.sqrt(σ2shrink)
-    
     # Save statistics if path is provided
     if norm_stats_path:
         print(f"Saving normalization statistics to {norm_stats_path}")
