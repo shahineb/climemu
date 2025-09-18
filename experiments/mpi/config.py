@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple
 import os
-import numpy as np
 
 
 EXPERIMENT_DIR = os.path.dirname(__file__)
@@ -47,7 +46,6 @@ class DataConfig:
     sigma_max_path: str = os.path.join(CACHE_DIR, "σmax.npy")  # Path to save/load σmax
     sigma_max_samples: int = 100000  # Maximum number of samples to use for sigma max estimation
     sigma_max_search_interval: List[int] = (1, 200)  # Interval in which we search for sigma max
-    # sigma_max_grid: np.ndarray = tuple(np.linspace(0.1, 200, 100).tolist())
 
 
 @dataclass

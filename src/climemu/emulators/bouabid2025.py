@@ -13,12 +13,14 @@ from .. import EMULATORS
 
 
 class Bouabid2025Emulator(GriddedEmulator):
-    def __init__(self, esm_name: str, which: str = "default"):
+    def __init__(self, esm_name: str):
         self.esm = esm_name
-        self.files_dir = os.path.join(esm_name, which)
         self.repo_id = "shahineb/jax-esm-emulation"
 
-    def load(self):
+    def load(self, which: str = "default"):
+        # Set files directory in hugging face repo
+        self.files_dir = os.path.join(self.esm_name, which)
+
         # Load pattern scaling coefficients
         self.β = self._load_pattern_scaling()
 

@@ -118,7 +118,7 @@ def compute_normalization(
 
     # Create a random subset of the dataset
     dataset_size = len(piControl_dataset)
-    subset_size = min(max_samples, dataset_size // 6)  # ~6 lag month autocorrelation
+    subset_size = min(max_samples, dataset_size)
 
     # Generate random indices
     key = jr.PRNGKey(seed)
@@ -164,10 +164,12 @@ def estimate_sigma_max(
     μ: jnp.ndarray,
     σ: jnp.ndarray,
     ctx_size: int,
-    sigmas: Optional[np.ndarray],
+    search_interval: List[float],
+    stepsize: int = 1,
+    reps: int = 30,
     subset_size: int = 10000,
     seed: int = 42,
-    alpha: float = 0.01,
+    alpha: float = 0.05,
     sigma_max_path: str = None,
     force_recompute: bool = False
 ) -> float:
@@ -214,29 +216,36 @@ def estimate_sigma_max(
     )
 
     # Find smallest σmax that fails to reject normality test over all samples
-    sigma_max = -np.inf
-    N = len(sigmas)
-    vmax = np.max(sigmas)
     with tqdm(total=len(dummy_loader)) as pbar:
         for batch in dummy_loader:
+            # Flatten sample
             x = utils.process_batch(batch, μ, σ)[:, :-ctx_size]
             x0 = x.ravel()
-            for sigma in sigmas:
-                xn = x0 + sigma * np.random.randn(*x0.shape)
-                xn = (xn - xn.mean()) / xn.std()
-                _, p = stats.normaltest(xn)
-                if p >= alpha:
-                    sigma_max = max(sigma_max, sigma)
-                    sigmas = np.linspace(sigma_max, vmax, N)
-                    pbar.set_description(f"σmax {round(sigma_max, 2)}")
-                    break
-            _ = pbar.update(1)
-            if np.isclose(sigma_max, vmax, atol=1):
-                sigma_max = vmax
-                break
 
-    # Double it to prevent signal leak
-    sigma_max = 2 * sigma_max
+            # Iterate over noise levels
+            sigma = search_interval[0]
+            while sigma < search_interval[1]:
+                # Compute frequency at which we fail to reject normality
+                count = 0
+                for _ in range(reps):
+                    xn = x0 + sigma * np.random.randn(*x0.shape)
+                    _, p = stats.normaltest(xn)
+                    count += (p >= alpha)
+                fail_to_reject_rate = count / reps
+
+                # If >80% then update search interval and move to next sample
+                if fail_to_reject_rate > 0.8:
+                    search_interval[0] = sigma
+                    pbar.set_description(f"σmax = {round(sigma, 2)}")
+                    break
+
+                # Else increase sigma
+                else:
+                    sigma += stepsize
+            _ = pbar.update(1)
+
+    # Increase by 20% to prevent signal leak (just to be safe)
+    sigma_max = 1.2 * search_interval[0]
 
     # Save and return
     if sigma_max_path:

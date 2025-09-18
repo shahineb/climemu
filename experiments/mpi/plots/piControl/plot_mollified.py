@@ -1,8 +1,6 @@
 import os
 import sys
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
 import cartopy.crs as ccrs
 import seaborn as sns
 from shapely.geometry import box

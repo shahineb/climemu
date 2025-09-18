@@ -12,10 +12,9 @@ class TestBouabid2025Emulator:
 
     def test_initialization(self):
         """Test Bouabid2025Emulator initialization."""
-        emulator = Bouabid2025Emulator("test_esm", "which")
+        emulator = Bouabid2025Emulator("test_esm")
         
         assert emulator.esm == "test_esm"
-        assert emulator.files_dir == "test_esm/which"
         assert emulator.repo_id == "shahineb/jax-esm-emulation"
 
     def test_load_method_raises_error_without_files(self):

@@ -120,8 +120,7 @@ def compute_normalization(
 
     # Create a random subset of the dataset
     dataset_size = len(piControl_dataset)
-    subset_size = min(max_samples, dataset_size // 6)  # ~6 lag month autocorrelation
-    # subset_size = min(max_samples, dataset_size)
+    subset_size = min(max_samples, dataset_size)
 
     # Generate random indices
     key = jr.PRNGKey(seed)
@@ -240,8 +239,8 @@ def estimate_sigma_max(
                     sigma += stepsize
             _ = pbar.update(1)
 
-    # Double it to prevent signal leak (just to be safe)
-    sigma_max = 2 * search_interval[0]
+    # Increase by 20% to prevent signal leak (just to be safe)
+    sigma_max = 1.2 * search_interval[0]
 
     # Save and return
     if sigma_max_path:
