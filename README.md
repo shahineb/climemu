@@ -5,7 +5,7 @@ This repository contains the implementation for the paper **"Score-based generat
 
 ## Installation
 
-Code tested on Python 3.12. Training and inference require GPU support. The latest release can be installed from PyPI:
+Code tested on Python 3.12. Training and inference require GPU support.
 ```bash
 pip install climemu
 ```
@@ -29,23 +29,8 @@ samples = emulator(gmst=2,       # GMST anomaly wrt piControl (°C)
                    xarray=True)  # Return xr.Dataset
 ```
 
-:warning: _Default model files for usage are trained on the full set of SSPs. To reproduce paper results use follow [instructions](docs/instructions.md)_.
+:warning: _Default model files for usage are trained on the full set of SSPs. To reproduce the paper results follow [instructions](docs/reproducepaper.md)_.
 
 
-## Project Structure
-```
-├── src/                   # Core source code
-│   ├── datasets/          # Dataset handling (CMIP6, pattern scaling)
-│   ├── diffusion/         # Diffusion model
-│   └── utils/             # Utility functions
-│
-└── experiments/           # Experiment-specific code
-    ├── access/            # ACCESS-ESM1-5 emulation
-    ├── miroc/             # MIROC6 emulation
-    └── mpi/               # MPI-ESM1-2-LR emulation
-        ├── main.py        # Training script
-        ├── trainer.py     # Training loop
-        ├── data.py        # Data loading and preprocessing
-        ├── utils.py       # Experiment utilities
-        └── config.py      # Configuration
-```
+## Citation
+_add_
