@@ -60,7 +60,7 @@ def main():
         μ=μ_train,
         σ=σ_train,
         ctx_size=config.model.context_channels,
-        sigmas=config.data.sigma_max_grid,
+        search_interval=list(config.data.sigma_max_search_interval),
         subset_size=config.data.norm_max_samples,
         seed=config.training.random_seed,
         sigma_max_path=config.data.sigma_max_path
