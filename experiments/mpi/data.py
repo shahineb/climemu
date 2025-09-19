@@ -3,7 +3,6 @@ import copy
 from typing import Dict, List, Optional, Tuple, Any
 
 import numpy as np
-from scipy import stats
 import jax.numpy as jnp
 import jax.random as jr
 
@@ -166,8 +165,8 @@ def estimate_sigma_max(
     force_recompute: bool = False
 ) -> float:
     """
-    Binary search to find the smallest σmax such that a KS test with null H0: N(0,σmax)
-    cannot discriminate the data with added Gaussian noise from the null.
+    Binary search to find the smallest σmax such that a KS test
+    cannot reject that the data with added Gaussian noise comes from N(0,σmax).
 
     If sigma_max_path is provided and the file exists, it will load the value
     unless force_recompute is True. If the file doesn't exist, it will compute and
