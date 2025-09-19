@@ -160,17 +160,14 @@ def estimate_sigma_max(
     σ: jnp.ndarray,
     ctx_size: int,
     search_interval: List[float],
-    stepsize: int = 1,
-    reps: int = 30,
-    subset_size: int = 10000,
     seed: int = 42,
     alpha: float = 0.05,
     sigma_max_path: str = None,
     force_recompute: bool = False
 ) -> float:
     """
-    Estimate the maximum σ such that adding Gaussian noise with σ to the data
-    produces a samples that don't reject a normality test.
+    Binary search to find the smallest σmax such that a KS test with null H0: N(0,σmax)
+    cannot discriminate the data with added Gaussian noise from the null.
 
     If sigma_max_path is provided and the file exists, it will load the value
     unless force_recompute is True. If the file doesn't exist, it will compute and
@@ -180,8 +177,6 @@ def estimate_sigma_max(
         dataset: The PatternToCMIP6Dataset containing the data
         μ: Mean for normalization
         σ: Standard deviation for normalization
-        sigmas: Grid of σ values to test for
-        batch_size: Batch size for dataloading
         subset_size: Number of samples to use for estimation
         seed: Random seed for reproducibility
         alpha: Significance level for the normality test
@@ -193,57 +188,53 @@ def estimate_sigma_max(
     """
     # Try to load existing σmax if path is provided
     if sigma_max_path and os.path.exists(sigma_max_path) and not force_recompute:
-        sigma_max = float(np.load(sigma_max_path))
-        print(f"Loading σmax = {sigma_max} from {sigma_max_path}")
-        return sigma_max
-
-    # Create loader over subset of training data
-    dataset_size = len(dataset)
-    subset_size = min(subset_size, dataset_size)
+        σmax = float(np.load(sigma_max_path))
+        print(f"Loading σmax = {σmax} from {sigma_max_path}")
+        return σmax
+    
+    # Define search parameters
+    max_split = 20
+    σmax_low, σmax_high = search_interval
+    n_montecarlo = 100
     key = jr.PRNGKey(seed)
-    indices = jr.permutation(key, dataset_size)[:subset_size].tolist()
-    dataset_subset = Subset(dataset, indices)
-    dummy_loader = DataLoader(
-        dataset_subset,
-        batch_size=1,
-        shuffle=True,
-        collate_fn=numpy_collate
-    )
 
-    # Find smallest σmax that fails to reject normality test over all samples
-    with tqdm(total=len(dummy_loader)) as pbar:
-        for batch in dummy_loader:
-            # Flatten sample
-            x = utils.process_batch(batch, μ, σ)[:, :-ctx_size]
-            x0 = x.ravel()
+    # Select σmax such that test power ~ 0.1
+    with tqdm(total=max_split) as pbar:
+        for _ in range(max_split):
+            # Set σmax in the middle of search interval
+            σmax = 0.5 * (σmax_low + σmax_high)
 
-            # Iterate over noise levels
-            sigma = search_interval[0]
-            while sigma < search_interval[1]:
-                # Compute frequency at which we fail to reject normality
-                count = 0
-                for _ in range(reps):
-                    xn = x0 + sigma * np.random.randn(*x0.shape)
-                    _, p = stats.normaltest(xn)
-                    count += (p >= alpha)
-                fail_to_reject_rate = count / reps
+            # Estimate CI on test power
+            key, χ = jr.split(key)
+            power = utils.estimate_power(dataset=dataset,
+                                         σmax=σmax,
+                                         α=alpha,
+                                         n_montecarlo=n_montecarlo,
+                                         μ=μ,
+                                         σ=σ,
+                                         ctx_size=ctx_size,
+                                         key=χ)
+            spread = 1.96 * np.sqrt(power * (1 - power) / n_montecarlo)
+            lb, ub = power - spread, power + spread
+            pbar.set_description(f"σmax = {σmax} -> Power = {power:.3f}±{spread:.3f}")
 
-                # If >80% then update search interval and move to next sample
-                if fail_to_reject_rate > 0.8:
-                    search_interval[0] = sigma
-                    pbar.set_description(f"σmax = {round(sigma, 2)}")
+            # Update search interval
+            if lb > 0.1:
+                σmax_low = σmax
+            elif ub < 0.1:
+                σmax_high = σmax
+            else:
+                if (lb >= 0.09) and (ub <= 1.01):
                     break
-
-                # Else increase sigma
                 else:
-                    sigma += stepsize
+                    print("Uncertain, increasing nb of monte carlo samples \n")
+                    n_montecarlo = min(2 * n_montecarlo, 10000)
             _ = pbar.update(1)
-
-    # Double to prevent signal leak (just to be safe)
-    sigma_max = 2 * search_interval[0]
+            if np.allclose(σmax_low, σmax_high, atol=1):
+                break
 
     # Save and return
     if sigma_max_path:
-        print(f"Saving σmax = {sigma_max} to {sigma_max_path}")
-        np.save(sigma_max_path, sigma_max)
-    return sigma_max
+        print(f"Saving σmax = {σmax} to {sigma_max_path}")
+        np.save(sigma_max_path, σmax)
+    return σmax

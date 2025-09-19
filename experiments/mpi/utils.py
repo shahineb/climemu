@@ -2,11 +2,13 @@ import os
 from functools import partial
 from typing import Tuple, Any, List
 import numpy as np
+from scipy.stats import kstest
 import jax
 import jax.numpy as jnp
 import jax.random as jr
 import wandb
 import equinox as eqx
+from tqdm import tqdm
 from torch.utils.data import DataLoader, Subset
 from src.utils.collate import numpy_collate
 
@@ -73,6 +75,36 @@ def process_batch(batch: Tuple, μ: jnp.ndarray, σ: jnp.ndarray) -> jnp.ndarray
     x = jax.vmap(partial(process_single, μ=μ, σ=σ))(patterns, samples)
     return x
 
+
+
+################################################################################
+#                              TEST POWER ESTIMATION                           #
+################################################################################
+
+
+def estimate_power(dataset, σmax, α, n_montecarlo, μ, σ, ctx_size, key):
+    # Initialize dataloader on subset of size n_iter
+    dataset_size = len(dataset)
+    indices = jr.permutation(key, dataset_size)[:n_montecarlo].tolist()
+    rejections = 0
+    dataset_subset = Subset(dataset, indices)
+    dummy_loader = DataLoader(dataset_subset, batch_size=1, shuffle=True, collate_fn=numpy_collate)
+
+    # Estimate power on this subset
+    rejections = 0
+    with tqdm(total=n_montecarlo) as pbar:
+        pbar.set_description(f"Estimating power for σmax = {σmax:.1f}")
+        for batch in dummy_loader:
+            # Draw sample and flatten
+            x = process_batch(batch, μ, σ)[:, :-ctx_size]
+            x0 = np.array(x.ravel())
+
+            # Add noise and perform test
+            xn = x0 + σmax * np.random.randn(len(x0))
+            _, pvalue = kstest(xn, "norm", args=(0, σmax))
+            rejections += (pvalue < α)
+            _ = pbar.update(1)
+    return rejections / n_montecarlo
 
 
 
