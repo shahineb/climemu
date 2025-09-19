@@ -79,7 +79,7 @@ k = np.where(ell > 0, ell, np.nan) / (2 * np.pi * R)
 
 # Select random sample for visualization
 np.random.seed(RANDOM_SEED)
-sample_year_idx = np.random.randint(len(piControl_diffusion.year))
+sample_year_idx = np.random.randint(len(piControl_cmip6.year))
 sample_month_idx = np.random.randint(12)
 print(f"Sample for month {sample_month_idx + 1}")
 

@@ -244,8 +244,8 @@ def estimate_sigma_max(
                     sigma += stepsize
             _ = pbar.update(1)
 
-    # Increase by 20% to prevent signal leak (just to be safe)
-    sigma_max = 1.2 * search_interval[0]
+    # Double to prevent signal leak (just to be safe)
+    sigma_max = 2 * search_interval[0]
 
     # Save and return
     if sigma_max_path:
