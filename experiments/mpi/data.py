@@ -223,7 +223,7 @@ def estimate_sigma_max(
             elif ub < 0.1:
                 σmax_high = σmax
             else:
-                if (lb >= 0.09) and (ub <= 1.01):
+                if (lb >= 0.09) and (ub <= 0.105):
                     break
                 else:
                     print("Uncertain, increasing nb of monte carlo samples \n")

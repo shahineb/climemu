@@ -118,7 +118,7 @@ def compute_normalization(
 
     # Create a random subset of the dataset
     dataset_size = len(piControl_dataset)
-    subset_size = min(max_samples, dataset_size // 6)  # ~6 lag month autocorrelation
+    subset_size = min(max_samples, dataset_size)
 
     # Generate random indices
     key = jr.PRNGKey(seed)
@@ -229,7 +229,7 @@ def estimate_sigma_max(
             elif ub < 0.1:
                 σmax_high = σmax
             else:
-                if (lb >= 0.09) and (ub <= 1.01):
+                if (lb >= 0.09) and (ub <= 0.105):
                     break
                 else:
                     print("Uncertain, increasing nb of monte carlo samples \n")
