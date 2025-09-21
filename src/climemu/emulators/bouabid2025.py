@@ -15,11 +15,11 @@ from .. import EMULATORS
 class Bouabid2025Emulator(GriddedEmulator):
     def __init__(self, esm_name: str):
         self.esm = esm_name
-        self.repo_id = "shahineb/jax-esm-emulation"
+        self.repo_id = "shahineb/climemu"
 
     def load(self, which: str = "default"):
         # Set files directory in hugging face repo
-        self.files_dir = os.path.join(self.esm_name, which)
+        self.files_dir = os.path.join(self.esm, which)
 
         # Load pattern scaling coefficients
         self.β = self._load_pattern_scaling()
@@ -54,12 +54,12 @@ class Bouabid2025Emulator(GriddedEmulator):
             samples = xr.Dataset(
                 {
                     var: (("member", "lat", "lon"), samples[:, i, :, :])
-                    for i, var in enumerate(["tas", "pr", "hurs", "sfcWind"])
+                    for i, var in enumerate(self.vars)
                 },
                 coords={
-                    "member": jnp.arange(len(samples)) + 1,  # Sample indices
-                    "lat": self.lat,                 # Latitude indices
-                    "lon": self.lon,                 # Longitude indices
+                    "member": jnp.arange(len(samples)) + 1,
+                    "lat": self.lat,
+                    "lon": self.lon,
                 },
             )
         return samples
@@ -106,7 +106,7 @@ class Bouabid2025Emulator(GriddedEmulator):
     
     def _load_climatology(self):
         # Load climatology data
-        climatology_path = hf_hub_download(self.repo_id, f"{self.files_dir}/climatology.nc")
+        climatology_path = hf_hub_download(self.repo_id, f"{self.esm}/piControl_climatology.nc")
         climatology = xr.open_dataset(climatology_path)
         return climatology
 
@@ -151,8 +151,8 @@ class Bouabid2025Emulator(GriddedEmulator):
         return self.climatology['lon'].values
 
     @property
-    def variables(self):
-        return self.climatology.data_vars
+    def vars(self):
+        return list(self.climatology.data_vars)
 
 
 @eqx.filter_jit
@@ -185,16 +185,16 @@ def draw_samples_single(nn, schedule, pattern, n_samples, n_steps, μ, σ, outpu
 @EMULATORS.register("MPI-ESM1-2-LR")
 class MPIEmulator(Bouabid2025Emulator):
     def __init__(self, which="default"):
-        super().__init__(esm_name="MPI-ESM1-2-LR", which=which)
+        super().__init__(esm_name="MPI-ESM1-2-LR")
 
 
 @EMULATORS.register("MIROC6")
 class MIROCEmulator(Bouabid2025Emulator):
     def __init__(self, which="default"):
-        super().__init__(esm_name="MIROC6", which=which)
+        super().__init__(esm_name="MIROC6")
 
 
 @EMULATORS.register("ACCESS-ESM1-5")
 class ACCESSEmulator(Bouabid2025Emulator):
     def __init__(self, which="default"):
-        super().__init__(esm_name="ACCESS-ESM1-5", which=which)
+        super().__init__(esm_name="ACCESS-ESM1-5")

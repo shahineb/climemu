@@ -27,7 +27,7 @@ class GriddedEmulator(AbstractEmulator):
     
     @property
     @abstractmethod
-    def variables(self):
+    def vars(self):
         """Variable list"""
         pass
 
@@ -40,5 +40,5 @@ class GriddedEmulator(AbstractEmulator):
         return len(self.lon)
     
     @property
-    def n_variables(self):
-        return len(self.variables)
+    def nvar(self):
+        return len(self.vars)
