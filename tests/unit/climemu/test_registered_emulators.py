@@ -13,19 +13,17 @@ class TestBouabid2025Emulator:
 
     def test_bouabid2025_emulator_initialization(self):
         """Test Bouabid2025Emulator initialization."""
-        emulator = Bouabid2025Emulator("test_esm", "default")
+        emulator = Bouabid2025Emulator("test_esm")
         
         assert emulator.esm == "test_esm"
-        assert emulator.files_dir == "test_esm/default"
-        assert emulator.repo_id == "shahineb/jax-esm-emulation"
+        assert emulator.repo_id == "shahineb/climemu"
 
     def test_bouabid2025_emulator_initialization_default_which(self):
         """Test Bouabid2025Emulator initialization with default which parameter."""
         emulator = Bouabid2025Emulator("test_esm")
         
         assert emulator.esm == "test_esm"
-        assert emulator.files_dir == "test_esm/default"
-        assert emulator.repo_id == "shahineb/jax-esm-emulation"
+        assert emulator.repo_id == "shahineb/climemu"
 
 
 class TestMPIEmulator:
@@ -36,8 +34,7 @@ class TestMPIEmulator:
         emulator = MPIEmulator()
         
         assert emulator.esm == "MPI-ESM1-2-LR"
-        assert emulator.files_dir == "MPI-ESM1-2-LR/default"
-        assert emulator.repo_id == "shahineb/jax-esm-emulation"
+        assert emulator.repo_id == "shahineb/climemu"
 
     def test_mpi_emulator_inheritance(self):
         """Test that MPIEmulator inherits from Bouabid2025Emulator."""
@@ -53,8 +50,7 @@ class TestMIROCEmulator:
         emulator = MIROCEmulator()
         
         assert emulator.esm == "MIROC6"
-        assert emulator.files_dir == "MIROC6/default"
-        assert emulator.repo_id == "shahineb/jax-esm-emulation"
+        assert emulator.repo_id == "shahineb/climemu"
 
     def test_miroc_emulator_inheritance(self):
         """Test that MIROCEmulator inherits from Bouabid2025Emulator."""
@@ -70,8 +66,7 @@ class TestACCESSEmulator:
         emulator = ACCESSEmulator()
         
         assert emulator.esm == "ACCESS-ESM1-5"
-        assert emulator.files_dir == "ACCESS-ESM1-5/default"
-        assert emulator.repo_id == "shahineb/jax-esm-emulation"
+        assert emulator.repo_id == "shahineb/climemu"
 
     def test_access_emulator_inheritance(self):
         """Test that ACCESSEmulator inherits from Bouabid2025Emulator."""

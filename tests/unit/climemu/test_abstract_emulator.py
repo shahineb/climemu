@@ -54,7 +54,7 @@ class TestGriddedEmulator:
                 return self._lon
             
             @property
-            def variables(self):
+            def vars(self):
                 return self._variables
             
             def __call__(self, *args, **kwargs):
@@ -70,9 +70,9 @@ class TestGriddedEmulator:
         # Test abstract properties
         assert np.array_equal(emulator.lat, lat_coords)
         assert np.array_equal(emulator.lon, lon_coords)
-        assert emulator.variables == var_list
+        assert emulator.vars == var_list
         
         # Test concrete properties
         assert emulator.nlat == len(lat_coords)
         assert emulator.nlon == len(lon_coords)
-        assert emulator.n_variables == len(var_list)
+        assert emulator.nvar == len(var_list)
