@@ -82,7 +82,7 @@ def process_batch(batch: Tuple, μ: jnp.ndarray, σ: jnp.ndarray) -> jnp.ndarray
 ################################################################################
 
 
-def estimate_power(dataset, σmax, α, n_montecarlo, μ, σ, ctx_size, key):
+def estimate_power(dataset, σmax, α, n_montecarlo, npool, μ, σ, ctx_size, key):
     # Initialize dataloader on subset of size n_iter
     dataset_size = len(dataset)
     indices = jr.permutation(key, dataset_size)[:n_montecarlo].tolist()
@@ -98,6 +98,7 @@ def estimate_power(dataset, σmax, α, n_montecarlo, μ, σ, ctx_size, key):
             # Draw sample and flatten
             x = process_batch(batch, μ, σ)[:, :-ctx_size]
             x0 = np.array(x.ravel())
+            x0 = np.random.choice(x0, size=npool, replace=False)
 
             # Add noise and perform test
             xn = x0 + σmax * np.random.randn(len(x0))

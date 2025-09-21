@@ -197,12 +197,16 @@ def estimate_sigma_max(
         return σmax
     
     # Define search parameters
-    max_split = 20
     σmax_low, σmax_high = search_interval
+    max_split = 20
     n_montecarlo = 100
+    max_montecarlo = 10000
+    npool = 50000
+    tgt_pow = 0.1
+    tol = 0.001 + 1.96 * np.sqrt(tgt_pow * (1 - tgt_pow)  / max_montecarlo)
     key = jr.PRNGKey(seed)
 
-    # Select σmax such that test power ~ 0.1
+    # Select σmax such that test power < 0.1
     with tqdm(total=max_split) as pbar:
         for _ in range(max_split):
             # Set σmax in the middle of search interval
@@ -214,28 +218,34 @@ def estimate_sigma_max(
                                          σmax=σmax,
                                          α=alpha,
                                          n_montecarlo=n_montecarlo,
+                                         npool=npool,
                                          μ=μ,
                                          σ=σ,
                                          ctx_size=ctx_size,
                                          key=χ)
             spread = 1.96 * np.sqrt(power * (1 - power) / n_montecarlo)
             lb, ub = power - spread, power + spread
-            pbar.set_description(f"σmax = {σmax} -> Power = {power:.3f}±{spread:.3f}")
-
-            # Update search interval
-            if lb > 0.1:
-                σmax_low = σmax
-            elif ub < 0.1:
-                σmax_high = σmax
-            else:
-                if (lb >= 0.09) and (ub <= 0.105):
-                    break
-                else:
-                    print("Uncertain, increasing nb of monte carlo samples \n")
-                    n_montecarlo = min(2 * n_montecarlo, 10000)
+            pbar.set_description(f"σmax = {σmax} -> Power ∈ ({lb:.3f}, {ub:.3f})")
             _ = pbar.update(1)
+
+            # Case 1: CI is fully below 0.1
+            if ub < tgt_pow:
+                # Early stop if CI is tight and close to 0.1 from below
+                if (spread < tol) and (ub + tol / 2 > tgt_pow):
+                    break
+                # Else look for smaller values
+                σmax_high = σmax
+            # Case 2: CI is fully above 0.1 OR CI is tight and straddles 0.1
+            elif (lb > tgt_pow) or ((spread < tol) and (lb < tgt_pow) and (ub > tgt_pow)):
+                # Look for larger values
+                σmax_low = σmax
+            # Case 3: Ambiguous overlap with 0.1 and CI not tight enough
+            else:
+                print("Uncertain, increasing nb of monte carlo samples \n")
+                n_montecarlo = min(2 * n_montecarlo, max_montecarlo)
             if np.allclose(σmax_low, σmax_high, atol=1):
                 break
+
 
     # Save and return
     if sigma_max_path:
