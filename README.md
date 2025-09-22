@@ -1,4 +1,4 @@
-[![image](https://github.com/shahineb/climemu/actions/workflows/checks.yml/badge.svg)](https://github.com/shahineb/climemu/actions)
+[![image](https://github.com/shahineb/climemu/actions/workflows/ci.yml/badge.svg)](https://github.com/shahineb/climemu/actions/workflows/ci.yml)
 
 # ESM Emulation with diffusion models in JAX
 
