@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import patch, Mock
-from src.climemu import build_emulator
+from climemu import build_emulator
 
 
 class TestBuildEmulator:
@@ -15,7 +15,7 @@ class TestBuildEmulator:
         mock_emulator_instance = Mock()
         mock_emulator_class.return_value = mock_emulator_instance
         
-        with patch('src.climemu.EMULATORS', {'MPI-ESM1-2-LR': mock_emulator_class}):
+        with patch('climemu.EMULATORS', {'MPI-ESM1-2-LR': mock_emulator_class}):
             result = build_emulator('MPI-ESM1-2-LR')
             
             # Verify the emulator class was called
@@ -25,7 +25,7 @@ class TestBuildEmulator:
 
     def test_build_emulator_with_keyerror(self):
         """Test build_emulator with an unregistered emulator name."""
-        with patch('src.climemu.EMULATORS', {}):
+        with patch('climemu.EMULATORS', {}):
             with pytest.raises(KeyError):
                 build_emulator('nonexistent_emulator')
 
@@ -35,7 +35,7 @@ class TestBuildEmulator:
             def __init__(self):
                 self.name = "test_emulator"
         
-        with patch('src.climemu.EMULATORS', {'test': TestEmulator}):
+        with patch('climemu.EMULATORS', {'test': TestEmulator}):
             result = build_emulator('test')
             assert isinstance(result, TestEmulator)
             assert result.name == "test_emulator"

@@ -2,7 +2,7 @@
 
 import pytest
 import numpy as np
-from src.climemu.emulators.abstractemulator import AbstractEmulator, GriddedEmulator
+from climemu.emulators.abstractemulator import AbstractEmulator, GriddedEmulator
 
 
 class TestAbstractEmulator:

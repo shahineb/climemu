@@ -1,7 +1,7 @@
 """Tests for the Registry class in climemu.utils.registry."""
 
 import pytest
-from src.climemu.utils.registry import Registry
+from climemu.utils.registry import Registry
 
 
 class TestRegistry:

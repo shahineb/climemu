@@ -1,6 +1,6 @@
 [project]
 name = "climemu"
-version = "0.1.3"
+version = "0.1.6"
 description = "Score-based generative emulation of impact-relevant earth system model outputs"
 readme = "README.md"
 authors = [

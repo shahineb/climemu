@@ -5,7 +5,7 @@ import numpy as np
 import jax.numpy as jnp
 import xarray as xr
 from unittest.mock import Mock, patch
-from src.climemu.emulators.bouabid2025 import Bouabid2025Emulator
+from climemu.emulators.bouabid2025 import Bouabid2025Emulator
 
 
 class TestBouabid2025Emulator:
@@ -61,18 +61,16 @@ class TestBouabid2025Emulator:
         assert np.array_equal(emulator.lon, np.linspace(0, 360, 20))
         assert emulator.vars == ['tas', 'pr', 'hurs', 'sfcWind']
 
-    @patch('src.climemu.emulators.bouabid2025.Bouabid2025Emulator._load_precursor')
-    @patch('src.climemu.emulators.bouabid2025.Bouabid2025Emulator._load_climatology')
-    @patch('src.climemu.emulators.bouabid2025.Bouabid2025Emulator._load_pattern_scaling')
+    @patch('climemu.emulators.bouabid2025.Bouabid2025Emulator._load_precursor')
+    @patch('climemu.emulators.bouabid2025.Bouabid2025Emulator._load_climatology')
+    @patch('climemu.emulators.bouabid2025.Bouabid2025Emulator._load_pattern_scaling')
     def test_load_method_sets_files_dir_correctly(self, mock_pattern_scaling, mock_climatology, mock_precursor):
         """Test that load method sets files_dir correctly using mocked data."""
         emulator = Bouabid2025Emulator("test_esm")
         
         # Mock the internal methods
-        mock_pattern_scaling.return_value = jnp.ones((12, 200, 2))
-        mock_climatology.return_value = xr.Dataset({
-            'tas': (('lat', 'lon'), np.random.randn(10, 20))
-        }, coords={'lat': np.linspace(-90, 90, 10), 'lon': np.linspace(0, 360, 20)})
+        mock_pattern_scaling.return_value = Mock()
+        mock_climatology.return_value = Mock()
         mock_precursor.return_value = Mock()
         
         # Call load with default which
