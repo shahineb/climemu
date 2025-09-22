@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import equinox as eqx
 from huggingface_hub import hf_hub_download
-from src.diffusion import HealPIXUNet, ContinuousVESchedule, ContinuousHeunSampler
+from diffusion import HealPIXUNet, ContinuousVESchedule, ContinuousHeunSampler
 from .abstractemulator import GriddedEmulator
 from .. import EMULATORS
 
