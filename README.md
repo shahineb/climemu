@@ -1,4 +1,5 @@
 [![image](https://github.com/shahineb/climemu/actions/workflows/ci.yml/badge.svg)](https://github.com/shahineb/climemu/actions/workflows/ci.yml)
+[![image](https://img.shields.io/pypi/v/climemu)](https://pypi.org/project/climemu/) 
 
 # ESM Emulation with diffusion models in JAX
 
