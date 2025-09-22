@@ -134,7 +134,7 @@ def create_tas_hurs_trends_plot():
         data = region_data[region]
         all_values.extend([data['ub_cmip6'], data['lb_cmip6'], data['ub_emulator'], data['lb_emulator']])
     
-    flat_values = xr.concat(all_values, dim='new')
+    flat_values = xr.concat(all_values, dim='new', coords='minimal')
     vmax = flat_values.quantile(q=0.99, dim=["new", "year"])
     vmin = flat_values.quantile(q=0.01, dim=["new", "year"])
     
@@ -164,7 +164,7 @@ def create_tas_hurs_trends_plot():
             color = colors[region]
             
             # Plot CMIP6 ensemble members
-            for ω in range(50):
+            for ω in range(40):
                 ax.plot(time, data['ensemble_cmip6'][var].isel(member=ω).values, 
                        color="gray", lw=0.2, ls='--', alpha=0.2)
             

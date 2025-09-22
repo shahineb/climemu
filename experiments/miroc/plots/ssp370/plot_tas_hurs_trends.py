@@ -134,7 +134,7 @@ def create_tas_hurs_trends_plot():
         data = region_data[region]
         all_values.extend([data['ub_cmip6'], data['lb_cmip6'], data['ub_emulator'], data['lb_emulator']])
     
-    flat_values = xr.concat(all_values, dim='new')
+    flat_values = xr.concat(all_values, dim='new', coords='minimal')
     vmax = flat_values.quantile(q=0.99, dim=["new", "year"])
     vmin = flat_values.quantile(q=0.01, dim=["new", "year"])
     

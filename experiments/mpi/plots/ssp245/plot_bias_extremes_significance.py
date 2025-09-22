@@ -255,14 +255,10 @@ def create_bias_extremes_plot():
     return fig
 
 
-fig = create_bias_extremes_plot()
-save_plot(fig, OUTPUT_DIR, 'extremes_bias_significance.jpg', dpi=DPI)
-
-
 def main():
     """Main function to generate bias extremes plot."""
     fig = create_bias_extremes_plot()
-    save_plot(fig, OUTPUT_DIR, 'extremes_bias.jpg', dpi=DPI)
+    save_plot(fig, OUTPUT_DIR, 'extremes_bias_significance.jpg', dpi=DPI)
 
 
 if __name__ == "__main__":
