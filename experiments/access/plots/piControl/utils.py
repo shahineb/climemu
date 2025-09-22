@@ -47,10 +47,10 @@ def load_data(config, in_memory=False):
 
     raw_base = os.path.join(RAW_CMIP6_ROOT, CLIMATOLOGY_MODEL, 'piControl', CLIMATOLOGY_MEMBER)
     time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
-    piControl_cmip6_tas = xr.open_mfdataset(os.path.join(raw_base, "tas/Amon/*"), decode_times=time_coder).drop_vars('height')
-    piControl_cmip6_pr = xr.open_mfdataset(os.path.join(raw_base, "pr/Amon/*"), decode_times=time_coder).astype("float64") * 86400
-    piControl_cmip6_hurs = xr.open_mfdataset(os.path.join(raw_base, "hurs/Amon/*"), decode_times=time_coder).drop_vars('height')
-    piControl_cmip6_sfcWind = xr.open_mfdataset(os.path.join(raw_base, "sfcWind/Amon/*"), decode_times=time_coder).drop_vars('height')
+    piControl_cmip6_tas = xr.open_mfdataset(os.path.join(raw_base, "tas/Amon/*"), decode_times=time_coder, data_vars='all').drop_vars('height')
+    piControl_cmip6_pr = xr.open_mfdataset(os.path.join(raw_base, "pr/Amon/*"), decode_times=time_coder, data_vars='all').astype("float64") * 86400
+    piControl_cmip6_hurs = xr.open_mfdataset(os.path.join(raw_base, "hurs/Amon/*"), decode_times=time_coder, data_vars='all').drop_vars('height')
+    piControl_cmip6_sfcWind = xr.open_mfdataset(os.path.join(raw_base, "sfcWind/Amon/*"), decode_times=time_coder, data_vars='all').drop_vars('height')
     piControl_cmip6 = xr.merge([
         piControl_cmip6_tas[['tas']],
         piControl_cmip6_pr[['pr']],

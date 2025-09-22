@@ -18,7 +18,7 @@ from experiments.access.plots.piControl.utils import load_data as load_piControl
 # CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = 'experiments/miroc/plots/ssp245/files'
+OUTPUT_DIR = 'experiments/access/plots/ssp245/files'
 DPI = 300
 WIDTH_MULTIPLIER = 4.0
 HEIGHT_MULTIPLIER = 3.0

@@ -7,7 +7,6 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader, Subset
 from functools import partial
 import numpy as np
-from scipy import stats
 
 from src.utils import arrays
 from src.datasets import CMIP6Data, PatternToCMIP6Dataset
