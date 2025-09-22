@@ -249,7 +249,7 @@ def create_bias_extremes_plot():
     norm = mcolors.Normalize(vmin=-100 * vmax, vmax=100 * vmax)
     sm = cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    cbar = fig.colorbar(sm, cax=cax, extend="both")
+    cbar = fig.colorbar(sm, cax=cax)
     cbar.set_label('Relative bias [%]')
     
     # Add season legend
