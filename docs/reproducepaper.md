@@ -1,6 +1,6 @@
 ## Reproducing Paper Results
 
-The paper results are based on an emulator trained with a subset of CMIP6 experiments (piControl, historical, ssp126, ssp585). Other experiments were left out for validation.
+The paper results are based on an emulator trained with a subset of CMIP6 simulations (piControl, historical, ssp126, ssp585). Other experiments were left out for validation.
 
 You can load this pretrained emulator directly:
 ```python
@@ -43,7 +43,7 @@ Alternatively, you can also retrain the emulator and reproduce the results by fo
 
 
 ## Instructions
-Instructions use [uv](https://docs.astral.sh/uv/) for Python package and project management. Code tested on Python 3.12. Training and inference require GPU support.
+Instructions use [uv](https://docs.astral.sh/uv/) for Python package and project management. Code tested on Python 3.10, 3.11, 3.12. Training and inference require GPU support.
 
 ### Installation
 ```bash
