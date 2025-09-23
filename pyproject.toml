@@ -1,6 +1,6 @@
 [project]
 name = "climemu"
-version = "0.1.6"
+version = "0.1.7"
 description = "Score-based generative emulation of impact-relevant earth system model outputs"
 readme = "README.md"
 authors = [
@@ -9,7 +9,6 @@ authors = [
 requires-python = ">=3.12"
 license = { text = "MIT" }
 dependencies = [
-    "dask>=2025.7.0",
     "diffrax>=0.7.0",
     "einops>=0.8.1",
     "equinox>=0.13.0",
@@ -17,10 +16,6 @@ dependencies = [
     "jax>=0.7.1",
     "netcdf4>=1.7.2",
     "numpy>=2.3.2",
-    "optax>=0.2.5",
-    "scikit-learn>=1.7.1",
-    "scipy>=1.16.1",
-    "tqdm>=4.67.1",
     "xarray>=2025.9.0",
 ]
 
@@ -29,8 +24,13 @@ gpu = [
     "jax[cuda12]>=0.7.1"
 ]
 train = [
+    "dask>=2025.7.0",
     "torch>=2.8.0",
     "healpy>=1.18.1",
+    "optax>=0.2.5",
+    "scikit-learn>=1.7.1",
+    "scipy>=1.16.1",
+    "tqdm>=4.67.1",
     "wandb>=0.21.3",
 ]
 plots = [
