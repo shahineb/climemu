@@ -1,12 +1,12 @@
 [project]
 name = "climemu"
-version = "0.1.7"
+version = "0.1.8"
 description = "Score-based generative emulation of impact-relevant earth system model outputs"
 readme = "README.md"
 authors = [
     { name = "Shahine Bouabid", email = "shahineb@mit.edu" },
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
     "diffrax>=0.7.0",

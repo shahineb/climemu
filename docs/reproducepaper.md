@@ -43,7 +43,7 @@ Alternatively, you can also retrain the emulator and reproduce the results by fo
 
 
 ## Instructions
-Instructions use [uv](https://docs.astral.sh/uv/) for Python package and project management. Code tested on Python 3.10, 3.11, 3.12. Training and inference require GPU support.
+Instructions use [uv](https://docs.astral.sh/uv/) for Python package and project management. Code tested on Python 3.11, 3.12. Training and inference require GPU support.
 
 ### Installation
 ```bash
