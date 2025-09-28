@@ -32,7 +32,7 @@ samples = emulator(gmst=2,       # GMST anomaly wrt piControl (°C)
                    xarray=True)  # Return xr.Dataset
 ```
 
-:warning: _Default model files for usage are trained on the full set of Tier I SSP simulations. To reproduce the paper results follow [instructions](docs/reproducepaper.md)_.
+:warning: _Default model files for usage are trained on the full set of Tier I SSP simulations. To reproduce the paper results follow [instructions](paper/README.md)_.
 
 
 ## Citation

@@ -25,7 +25,7 @@ Alternatively, you can also retrain the emulator and reproduce the results by fo
 │   ├── diffusion/         # Diffusion model
 │   └── utils/             # Utility functions
 │
-└── experiments/           # Paper experiment-specific code
+└── paper/                 # Paper experiments code
     ├── intermodel/        # Scripts for inter-model diagnosis
     ├── access/            # ACCESS-ESM1-5 emulation
     ├── miroc/             # MIROC6 emulation
@@ -54,7 +54,7 @@ uv sync --all-extras
 ```
 
 ### Training
-To train an emulator for a specific ESM, update the paths to your CMIP6 data directory in `experiments/<esm>/config.py`. The code expects CMIP6 data **already converted to anomalies**, organized as:
+To train an emulator for a specific ESM, update the paths to your CMIP6 data directory in `paper/<esm>/config.py`. The code expects CMIP6 data **already converted to anomalies**, organized as:
 ```
 root_dir/
 └── model_name/
@@ -69,26 +69,25 @@ This can be modified in [CMIP6Data.get_file_path](https://github.com/shahineb/cl
 
 Run training (example for MPI-ESM1-2-LR):
 ```bash
-uv run -m experiments.mpi.main
+uv run -m paper.mpi.main
 ```
-This will generate model files in `experiments/mpi/cache`.
+This will generate model files in `paper/mpi/cache`.
 
 
 ### Inference
-Adapt the output paths for the emulated ensembles in `experiments/<esm>/config.py`.
+Adapt the output paths for the emulated ensembles in `paper/<esm>/config.py`.
 
 Generate emulated climate projections:
 ```bash
 # Pre-industrial control
-uv run -m experiments.mpi.inference.piControl
+uv run -m paper.mpi.inference.piControl
 
 # Future scenarios
-uv run -m experiments.mpi.inference.ssp245
-uv run -m experiments.mpi.inference.ssp270
+uv run -m paper.mpi.inference.ssp245
+uv run -m paper.mpi.inference.ssp270
 ```
 
 
 ### Diagnostics
 
-The `plots/` and `intermodel/` directories contains all the scripts used to recreate the diagnostics shown in the paper from the generated large ensembles.
-There are many of them, covering a wide range of evaluations, so we do not list them individually here.
+The `plots/` and `intermodel/` directories contains all the scripts used to recreate the diagnostics shown in the paper from the generated large ensembles. There are many of them, covering a wide range of evaluations, so we do not list them individually here.

@@ -26,8 +26,26 @@ jobs:
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Install dependencies
-        run: uv sync
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: uv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('uv.lock', 'pyproject.toml') }}
+          restore-keys: |
+            uv-${{ runner.os }}-${{ matrix.python-version }}-
+
+      - name: Prepare test env
+        run: uv sync --dev --no-install-
+        
+      - name: Build distribution
+        run: uv build
+
+      - name: Install built package
+        run: uv pip install dist/*.whl
 
       - name: Run tests
-        run: uv run pytest -v
+        env:
+          PYTHONPATH: ""
+        run: uv run pytest -v --import-mode=importlib
