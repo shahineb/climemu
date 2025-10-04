@@ -220,7 +220,7 @@ VARIABLES = {
     },
     'sfcWind': {
         'channel': 3,
-        'name': 'Windspeed',
+        'name': 'Wind speed',
         'unit': 'm/s',
         'cmap': 'PRGn',
         'color': 'cornflowerblue'

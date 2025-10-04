@@ -3,8 +3,6 @@ import sys
 import numpy as np
 import pandas as pd
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
 import cartopy.crs as ccrs
 import seaborn as sns
 
@@ -79,9 +77,9 @@ def compute_gmst_data(test_dataset, config, β):
     
     df = pd.DataFrame({
         "GMST": np.concatenate([gmst_piControl, gmst_emulator, gmst_historical]),
-        "Dataset": (["(a)"] * len(gmst_piControl)
-                  + ["(b)"] * len(gmst_emulator)
-                  + ["(c)"] * len(gmst_historical))
+        "Dataset": (["ESM \n piControl"] * len(gmst_piControl)
+                  + ["(a)"] * len(gmst_emulator)
+                  + ["(b)"] * len(gmst_historical))
     })
     
     return df
@@ -109,7 +107,7 @@ df = compute_gmst_data(test_dataset, config, β)
 
 def create_overfitting_plot():
     """Create the overfitting analysis plot."""
-    width_ratios = [0.6, 0.02, 1, 1, 1, 0.05]
+    width_ratios = [0.6, 0.02, 0.05, 1, 1, 0.05]
     height_ratios = [1, 1]
     
     fig, gs = setup_figure(width_ratios, height_ratios, WIDTH_MULTIPLIER, HEIGHT_MULTIPLIER, WSPACE, HSPACE)
@@ -124,6 +122,16 @@ def create_overfitting_plot():
         label.set_fontweight('bold')
         label.set_fontsize(14)
     
+
+    ax = fig.add_subplot(gs[0, -4])
+    ax.axis("off")
+    ax.text(0.5, 0.5, "Wind speed", va="center", ha="center", rotation="vertical", fontsize=14, weight="bold")
+
+
+    ax = fig.add_subplot(gs[1, -4])
+    ax.axis("off")
+    ax.text(0.5, 0.5, "Relative humidity", va="center", ha="center", rotation="vertical", fontsize=14, weight="bold")
+
     # Plot variable maps
     for i, var in enumerate(["sfcWind", "hurs"]):
         var_info = VARIABLES[var]
@@ -132,15 +140,6 @@ def create_overfitting_plot():
         flatvalues = []
         meshes = []
 
-        # piControl map
-        ax = fig.add_subplot(gs[i, -4], projection=ccrs.PlateCarree())
-        mesh = piControl[var].plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), cmap=cmap, add_colorbar=False)
-        ax.coastlines()
-        flatvalues.append(piControl[var].values.ravel())
-        meshes.append(mesh)
-        if i == 0:
-            ax.set_title(f"(a)", fontsize=18, weight="bold")
-
         # Emulator map
         ax = fig.add_subplot(gs[i, -3], projection=ccrs.PlateCarree())
         mesh = emulator[var].plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), cmap=cmap, add_colorbar=False)
@@ -148,7 +147,7 @@ def create_overfitting_plot():
         flatvalues.append(emulator[var].values.ravel())
         meshes.append(mesh)
         if i == 0:
-            ax.set_title(f"(b)", fontsize=18, weight="bold")
+            ax.set_title("(a) Emulator  \n for ΔTₜ∼N(0,σ²PI)", fontsize=18, weight="bold")
 
         # Historical map
         ax = fig.add_subplot(gs[i, -2], projection=ccrs.PlateCarree())
@@ -157,7 +156,7 @@ def create_overfitting_plot():
         flatvalues.append(historical[var].values.ravel())
         meshes.append(mesh)
         if i == 0:
-            ax.set_title(f"(c)", fontsize=18, weight="bold")
+            ax.set_title(f"(b) MPI-ESM1-2-LR \n early historical (1850-1900)", fontsize=18, weight="bold")
 
         # Set consistent color limits
         vmax = np.quantile(np.concatenate(flatvalues), 0.999)

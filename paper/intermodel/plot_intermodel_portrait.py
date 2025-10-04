@@ -289,7 +289,7 @@ def create_intermodel_portrait_plot():
     sm.set_array([])
     cbar = fig.colorbar(sm, cax=cax, extend='max')
     cbar.ax.set_yticks([0, 1])
-    cbar.set_label('EMD-to-noise ratio [1]')
+    cbar.set_label('EMD-to-noise ratio')
     
     # Add season legend
     create_season_legend(fig, cax)

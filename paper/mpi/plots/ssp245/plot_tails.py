@@ -58,7 +58,7 @@ def add_quantile_axes(ax, quantiles, color, label_prefix):
     sec_axis.set_xticks(quantiles)
     sec_axis.set_xticklabels([f"{label_prefix}%", f"{label_prefix}.9%", 
                              f"{label_prefix}.99%", f"{label_prefix}.999%"], 
-                            color=color, ha='left', fontsize=7, rotation=45)
+                            color=color, ha='left', fontsize=10, rotation=45)
     sec_axis.xaxis.set_ticks_position('top')
     sec_axis.spines['bottom'].set_color(color)
     sec_axis.tick_params(axis='x', colors=color, pad=0.1)
@@ -139,6 +139,8 @@ def create_tail_plot():
     
     return fig
 
+fig = create_tail_plot()
+save_plot(fig, OUTPUT_DIR, 'tails.jpg', dpi=DPI)
 
 def main():
     """Main function to generate tail distribution plot."""
