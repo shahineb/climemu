@@ -3,7 +3,6 @@
 import pytest
 import numpy as np
 import jax.numpy as jnp
-import xarray as xr
 from unittest.mock import Mock, patch
 from climemu.emulators.bouabid2025 import Bouabid2025Emulator
 

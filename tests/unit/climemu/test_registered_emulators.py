@@ -1,6 +1,6 @@
 """Tests for registered emulator classes."""
 
-from src.climemu.emulators.bouabid2025 import (
+from climemu.emulators.bouabid2025 import (
     Bouabid2025Emulator, 
     MPIEmulator, 
     MIROCEmulator, 
