@@ -10,7 +10,7 @@ This repository contains the implementation for the paper **"Score-based generat
 
 Code tested on Python >=3.11. GPU support is required for practical usage. Install from PyPI:
 ```bash
-pip install climemu
+pip install climemu[gpu]
 ```
 
 ## Usage
