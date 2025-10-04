@@ -14,7 +14,7 @@ import wandb
 from src.utils.collate import numpy_collate
 from src.diffusion import denoising_make_step, denoising_batch_loss
 from src.datasets import PatternToCMIP6Dataset
-from experiments.mpi.config import Config
+from paper.mpi.config import Config
 from . import utils
 
 

@@ -13,14 +13,14 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.mpi.config import Config
-from experiments.mpi.plots.piControl.utils import VARIABLES, load_data, setup_figure, save_plot, wrap_lon, add_seasonal_coords
-from experiments.mpi.data import load_dataset
+from paper.mpi.config import Config
+from paper.mpi.plots.piControl.utils import VARIABLES, load_data, setup_figure, save_plot, wrap_lon, add_seasonal_coords
+from paper.mpi.data import load_dataset
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-OUTPUT_DIR = 'experiments/mpi/plots/piControl/files'
+OUTPUT_DIR = 'paper/mpi/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 5.0
 HEIGHT_MULTIPLIER = 3.0

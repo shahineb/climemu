@@ -89,7 +89,7 @@ class SamplingConfig:
     n_samples: int = 50  # Number of samples to generate per test point
     batch_size: int = 2  # Batch size for evaluation
     random_seed: int = 2100  # Seed for reproducibility
-    output_dir: str = f"/orcd/data/raffaele/001/shahineb/jax-esm-emulation/experiments/{EXPERIMENT_NAME}/outputs"  # Output directory for inference
+    output_dir: str = f"/orcd/data/raffaele/001/shahineb/jax-esm-emulation/paper/{EXPERIMENT_NAME}/outputs"  # Output directory for inference
 
 @dataclass
 class Config:

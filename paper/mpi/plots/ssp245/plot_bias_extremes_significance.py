@@ -16,16 +16,16 @@ if base_dir not in sys.path:
     sys.path.append(base_dir)
 
 from src.utils import arrays
-from experiments.mpi.config import Config
-from experiments.mpi.plots.ssp245.utils import VARIABLES, load_data, setup_figure, save_plot
-from experiments.mpi.plots.piControl.utils import load_data as load_piControl_data
+from paper.mpi.config import Config
+from paper.mpi.plots.ssp245.utils import VARIABLES, load_data, setup_figure, save_plot
+from paper.mpi.plots.piControl.utils import load_data as load_piControl_data
 
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = 'experiments/mpi/plots/ssp245/files'
+OUTPUT_DIR = 'paper/mpi/plots/ssp245/files'
 DPI = 300
 WIDTH_MULTIPLIER = 0.25
 HEIGHT_MULTIPLIER = 1.0

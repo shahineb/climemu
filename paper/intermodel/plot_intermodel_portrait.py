@@ -15,23 +15,23 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.mpi.plots.ssp245.utils import VARIABLES
+from paper.mpi.plots.ssp245.utils import VARIABLES
 
-from experiments.mpi.config import Config as MPIConfig
-from experiments.miroc.config import Config as MIROCConfig
-from experiments.access.config import Config as ACCESSConfig
+from paper.mpi.config import Config as MPIConfig
+from paper.miroc.config import Config as MIROCConfig
+from paper.access.config import Config as ACCESSConfig
 
-from experiments.mpi.plots.ssp245.utils import load_data as load_mpi
-from experiments.miroc.plots.ssp245.utils import load_data as load_miroc
-from experiments.access.plots.ssp245.utils import load_data as load_access
-from experiments.intermodel.utils import setup_figure, save_plot, myRdPu
+from paper.mpi.plots.ssp245.utils import load_data as load_mpi
+from paper.miroc.plots.ssp245.utils import load_data as load_miroc
+from paper.access.plots.ssp245.utils import load_data as load_access
+from paper.intermodel.utils import setup_figure, save_plot, myRdPu
 
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = 'experiments/intermodel/files'
+OUTPUT_DIR = 'paper/intermodel/files'
 DPI = 300
 WIDTH_MULTIPLIER = 0.25
 HEIGHT_MULTIPLIER = 1.0

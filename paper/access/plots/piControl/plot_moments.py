@@ -13,13 +13,13 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.access.config import Config
-from experiments.access.plots.piControl.utils import load_data, VARIABLES, setup_figure, save_plot
+from paper.access.config import Config
+from paper.access.plots.piControl.utils import load_data, VARIABLES, setup_figure, save_plot
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-OUTPUT_DIR = 'experiments/access/plots/piControl/files'
+OUTPUT_DIR = 'paper/access/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 6.0
 HEIGHT_MULTIPLIER = 2.9

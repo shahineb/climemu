@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from src.utils.collate import numpy_collate
 from src.diffusion import denoising_make_step, denoising_batch_loss
 from src.datasets import PatternToCMIP6Dataset
-from experiments.miroc.config import Config
+from paper.miroc.config import Config
 from . import utils
 
 

@@ -9,16 +9,16 @@ if base_dir not in sys.path:
     sys.path.append(base_dir)
 
 from src.utils import arrays
-from experiments.miroc.config import Config
-from experiments.miroc.plots.ssp245.utils import load_data, VARIABLES, setup_figure, save_plot
-from experiments.miroc.plots.piControl.utils import load_data as load_piControl_data
+from paper.miroc.config import Config
+from paper.miroc.plots.ssp245.utils import load_data, VARIABLES, setup_figure, save_plot
+from paper.miroc.plots.piControl.utils import load_data as load_piControl_data
 
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = 'experiments/miroc/plots/ssp245/files'
+OUTPUT_DIR = 'paper/miroc/plots/ssp245/files'
 DPI = 300
 WIDTH_MULTIPLIER = 4.0
 HEIGHT_MULTIPLIER = 3.0

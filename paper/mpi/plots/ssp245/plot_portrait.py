@@ -15,15 +15,15 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.mpi.config import Config
-from experiments.mpi.plots.ssp245.utils import VARIABLES, load_data, setup_figure, save_plot, myRdPu
+from paper.mpi.config import Config
+from paper.mpi.plots.ssp245.utils import VARIABLES, load_data, setup_figure, save_plot, myRdPu
 
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = 'experiments/mpi/plots/ssp245/files'
+OUTPUT_DIR = 'paper/mpi/plots/ssp245/files'
 DPI = 300
 WIDTH_MULTIPLIER = 0.25
 HEIGHT_MULTIPLIER = 1.0

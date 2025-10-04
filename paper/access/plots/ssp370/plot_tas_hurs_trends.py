@@ -12,16 +12,16 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.access.config import Config
-from experiments.access.plots.ssp370.utils import load_data, setup_figure, save_plot
-from experiments.access.plots.historical.utils import load_data as load_historical_data
+from paper.access.config import Config
+from paper.access.plots.ssp370.utils import load_data, setup_figure, save_plot
+from paper.access.plots.historical.utils import load_data as load_historical_data
 
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = 'experiments/access/plots/ssp370/files'
+OUTPUT_DIR = 'paper/access/plots/ssp370/files'
 DPI = 300
 WIDTH_MULTIPLIER = 3.0
 HEIGHT_MULTIPLIER = 2.0
