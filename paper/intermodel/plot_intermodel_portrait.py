@@ -24,7 +24,7 @@ from experiments.access.config import Config as ACCESSConfig
 from experiments.mpi.plots.ssp245.utils import load_data as load_mpi
 from experiments.miroc.plots.ssp245.utils import load_data as load_miroc
 from experiments.access.plots.ssp245.utils import load_data as load_access
-from experiments.intermodel.utils import setup_figure, save_plot
+from experiments.intermodel.utils import setup_figure, save_plot, myRdPu
 
 
 # =============================================================================
@@ -176,7 +176,7 @@ def portrait_plot(fig, ax, seasonal_data, y_labels):
                 colors_flat.append(vals[k])
     
     coll = PatchCollection(patches, array=np.array(colors_flat),
-                           cmap='RdPu', norm=norm, edgecolor='grey', linewidth=0.2)
+                           cmap=myRdPu, norm=norm, edgecolor='grey', linewidth=0.2)
     ax.add_collection(coll)
     
     # set ticks halfway through each cell
@@ -283,7 +283,7 @@ def create_intermodel_portrait_plot():
     
     # Add colorbar
     cax = fig.add_subplot(gs[5:8, -2])
-    cmap = cm.RdPu
+    cmap = myRdPu
     norm = mcolors.Normalize(vmin=0, vmax=1)
     sm = cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])

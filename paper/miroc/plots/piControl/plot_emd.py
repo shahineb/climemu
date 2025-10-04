@@ -10,13 +10,13 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.miroc.config import Config
-from experiments.miroc.plots.piControl.utils import load_data, VARIABLES, setup_figure, save_plot, wrap_lon, add_seasonal_coords
+from paper.miroc.config import Config
+from paper.miroc.plots.piControl.utils import load_data, VARIABLES, setup_figure, save_plot, add_seasonal_coords, myRdPu
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-OUTPUT_DIR = 'experiments/miroc/plots/piControl/files'
+OUTPUT_DIR = 'paper/miroc/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 5.0
 HEIGHT_MULTIPLIER = 3.0
@@ -94,7 +94,7 @@ def plot_variable(fig, gs, var, i):
         ax = fig.add_subplot(gs[i, j + 1], projection=ccrs.Robinson())
         mesh = emd[var][season].plot.pcolormesh(
             ax=ax, transform=ccrs.PlateCarree(),
-            cmap='RdPu', add_colorbar=False
+            cmap=myRdPu, add_colorbar=False
         )
         ax.coastlines()
         # flatvalues.append(emd[var][season].values.ravel())
@@ -108,7 +108,8 @@ def plot_variable(fig, gs, var, i):
         cax = fig.add_subplot(gs[1:-1, 5])
         cbar = fig.colorbar(mesh,
                             cax=cax,
-                            orientation='vertical')
+                            orientation='vertical',
+                            extend='max')
         cbar.ax.tick_params(labelsize=16)
         cbar.ax.set_yticks([0, 0.5, 1])
         cbar.set_label(f"EMD-to-noise ratio", labelpad=4, fontsize=16, weight="bold")

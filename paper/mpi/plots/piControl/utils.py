@@ -3,6 +3,7 @@ import os
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from matplotlib.gridspec import GridSpec
 from dask.diagnostics import ProgressBar
 
@@ -140,3 +141,14 @@ def add_seasonal_coords(data):
     }
     seasons = np.array([month_to_season[m] for m in data['month'].values])
     return data.assign_coords(season=("month", seasons))
+
+
+def emphasize_mid_cmap(cmap="RdPu", strength=4.0, N=256):
+    base = plt.get_cmap(cmap, N)
+    if strength <= 0:
+        return base
+    x = np.linspace(0., 1., N)
+    x_warp = 0.5 + 0.5 * np.tanh(strength * (x - 0.5)) / np.tanh(strength / 2)
+    return mcolors.LinearSegmentedColormap.from_list(f"{cmap}_mid", base(x_warp))
+
+myRdPu = emphasize_mid_cmap(cmap="RdPu", strength=4.0)

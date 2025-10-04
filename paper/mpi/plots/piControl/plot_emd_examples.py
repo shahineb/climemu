@@ -11,13 +11,13 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.mpi.config import Config
-from experiments.mpi.plots.piControl.utils import load_data, setup_figure, save_plot, wrap_lon
+from paper.mpi.config import Config
+from paper.mpi.plots.piControl.utils import load_data, setup_figure, save_plot, wrap_lon
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-OUTPUT_DIR = 'experiments/mpi/plots/piControl/files'
+OUTPUT_DIR = 'paper/mpi/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 1.0
 HEIGHT_MULTIPLIER = 1.1
@@ -29,9 +29,9 @@ HSPACE = 0.0
 # =============================================================================
 
 def normalize_data(x, μ, vmax, vmin):
-    """Normalize data to [-0.5, 0.5] range."""
+    """Normalize data to [-1, 1] range."""
     x = np.asarray(x)
-    return (x - μ) / (vmax - vmin)
+    return 2 * (x - μ) / (vmax - vmin)
 
 def compute_emd_bulk1():
     """Low EMD bulk (sfcWind mediterranean nov)."""
@@ -87,7 +87,7 @@ def compute_emd_conc1():
 
 def compute_emd_conc2():
     """Poor EMD concentrated (pr mediterranean)."""
-    lat_range = slice(28, 45)
+    lat_range = slice(25, 41)
     lon_range = slice(-10, 15)
     data_cmip6 = wrap_lon(piControl_cmip6['pr']).sel(lon=lon_range, lat=lat_range, month=7).values.ravel()
     data_diffusion = wrap_lon(piControl_diffusion['pr']).sel(lon=lon_range, lat=lat_range, month=7).values.ravel()
@@ -100,7 +100,9 @@ def compute_emd_conc2():
 
 def compute_emd_conc3():
     """Very poor EMD concentrated (pr central africa)."""
-    lon_range = slice(-10, 45)
+    # lon_range = slice(-10, 45)
+    # lat_range = slice(5, 15)
+    lon_range = slice(-10, 38)
     lat_range = slice(5, 15)
     data_cmip6 = wrap_lon(piControl_cmip6['pr']).sel(lon=lon_range, lat=lat_range, month=12).values.ravel()
     data_diffusion = wrap_lon(piControl_diffusion['pr']).sel(lon=lon_range, lat=lat_range, month=12).values.ravel()
@@ -150,8 +152,8 @@ def create_emd_examples_plot():
     ax.text(-0.1, -1, "EMD-to-noise =", va="center", ha="center", fontsize=6, weight="bold")
     
     # Define bins for different plot types
-    linbins = np.linspace(-0.5, 0.5, 200)
-    logbins = np.concatenate([-np.logspace(-6, 0, 100)[::-1], np.zeros(1), np.logspace(-6, 0, 100)])
+    linbins = np.linspace(-1.5, 1.5, 200)
+    logbins = np.concatenate([-np.logspace(-6, 0.17, 100)[::-1], np.zeros(1), np.logspace(-6, 0.17, 100)])
     
     labels = 'abc-def'
     for i, (cmip6, diffusion, emdtonoise) in enumerate(populations):
@@ -161,26 +163,26 @@ def create_emd_examples_plot():
         # Plot histogram
         ax = fig.add_subplot(gs[0, i + 1])
         μ = jnp.concatenate([cmip6, diffusion]).mean()
-        vmax = jnp.concatenate([cmip6, diffusion]).max()
-        vmin = jnp.concatenate([cmip6, diffusion]).min()
+        vmax = jnp.quantile(jnp.concatenate([cmip6, diffusion]), 0.999)
+        vmin = jnp.quantile(jnp.concatenate([cmip6, diffusion]), 0.001)
         
         if i >= 3:
             bins = logbins
-            ax.set_ylim(0, 45)
+            ax.set_ylim(0, 10)
         else:
             bins = linbins
-            ax.set_ylim(0, 15)
+            ax.set_ylim(0, 5)
         
         sns.histplot(normalize_data(cmip6, μ, vmax, vmin), ax=ax, kde=False, stat="density", 
                     bins=bins, color="dodgerblue", edgecolor=None, label=f"{config.data.model_name}")
         sns.histplot(normalize_data(diffusion, μ, vmax, vmin), ax=ax, kde=False, stat="density", 
                     bins=bins, color="tomato", edgecolor=None, alpha=0.5, label="Emulator")
         
-        ax.set_xlabel("[1]", fontsize=5, labelpad=1)
         ax.set_frame_on(False)
-        ax.set_xlim(-0.3, 0.3)
+        ax.set_xlim(-1.5, 1.5)
         ax.yaxis.set_visible(False)
-        ax.set_xticks([])
+        ax.set_xticks([-1, 0, 1])
+        ax.tick_params(axis="x", labelsize=4, pad=0, length=0)
         
         # Add EMD value label
         ax = fig.add_subplot(gs[1, i + 1])
@@ -201,6 +203,7 @@ def create_emd_examples_plot():
 # =============================================================================
 # MAIN EXECUTION
 # =============================================================================
+
 
 def main():
     """Main function to generate EMD examples plot."""
