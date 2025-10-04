@@ -13,15 +13,15 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.access.config import Config
-from experiments.access.plots.piControl.utils import load_data, setup_figure, save_plot, wrap_lon, add_seasonal_coords
+from paper.access.config import Config
+from paper.access.plots.piControl.utils import load_data, setup_figure, save_plot, wrap_lon, add_seasonal_coords, myRdPu
 
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = 'experiments/access/plots/piControl/files'
+OUTPUT_DIR = 'paper/access/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 6.0
 HEIGHT_MULTIPLIER = 3.5
@@ -202,7 +202,7 @@ def create_entropy_hurs_plot():
     
     # Max EMD map
     ax = fig.add_subplot(gs[:, 6], projection=ccrs.Robinson())
-    mesh = max_emd.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), cmap="RdPu", add_colorbar=False)
+    mesh = max_emd.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), cmap=myRdPu, add_colorbar=False)
     ax.coastlines()
     ax.set_title("Max. EMD-to-noise across seasons", weight="bold")
     mesh.set_clim(0, 1)

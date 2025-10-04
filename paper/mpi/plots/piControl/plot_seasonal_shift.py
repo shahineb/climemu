@@ -2,8 +2,6 @@ import os
 import sys
 import numpy as np
 import xarray as xr
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
 import cartopy.crs as ccrs
 from scipy.stats import wasserstein_distance
 
@@ -12,13 +10,13 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.mpi.config import Config
-from experiments.mpi.plots.piControl.utils import load_data, setup_figure, save_plot, wrap_lon, add_seasonal_coords
+from paper.mpi.config import Config
+from paper.mpi.plots.piControl.utils import load_data, setup_figure, save_plot, wrap_lon, add_seasonal_coords, myRdPu
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-OUTPUT_DIR = 'experiments/mpi/plots/piControl/files'
+OUTPUT_DIR = 'paper/mpi/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 6.0
 HEIGHT_MULTIPLIER = 3.5
@@ -171,7 +169,7 @@ def create_seasonal_shift_plot():
     
     # Plot 3: Max EMD-to-noise across seasons
     ax = fig.add_subplot(gs[0, 5], projection=ccrs.Robinson())
-    mesh = max_emd.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), cmap="RdPu", add_colorbar=False)
+    mesh = max_emd.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), cmap=myRdPu, add_colorbar=False)
     ax.coastlines()
     ax.set_title("Max. EMD-to-noise across seasons", weight="bold")
     mesh.set_clim(0, 1)

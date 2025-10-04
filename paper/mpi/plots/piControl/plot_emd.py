@@ -10,13 +10,13 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.mpi.config import Config
-from experiments.mpi.plots.piControl.utils import load_data, VARIABLES, setup_figure, save_plot
+from paper.mpi.config import Config
+from paper.mpi.plots.piControl.utils import load_data, VARIABLES, setup_figure, save_plot, myRdPu
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-OUTPUT_DIR = 'experiments/mpi/plots/piControl/files'
+OUTPUT_DIR = 'paper/mpi/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 5.0
 HEIGHT_MULTIPLIER = 3.0
@@ -26,7 +26,6 @@ HSPACE = 0.05
 # =============================================================================
 # COMMON FUNCTIONS
 # =============================================================================
-
 
 def compute_emd(foo, bar):
     """Compute Earth Mover's Distance between two datasets."""
@@ -94,6 +93,7 @@ emd = get_plot_data()
 # PLOTTING
 # =============================================================================
 
+
 def plot_variable(fig, gs, var, i):
     """Plot EMD maps for a single variable across all seasons."""
     var_info = VARIABLES[var]
@@ -111,7 +111,7 @@ def plot_variable(fig, gs, var, i):
         ax = fig.add_subplot(gs[i, j + 1], projection=ccrs.Robinson())
         mesh = emd[var][season].plot.pcolormesh(
             ax=ax, transform=ccrs.PlateCarree(),
-            cmap='RdPu', add_colorbar=False
+            cmap=myRdPu, add_colorbar=False
         )
         ax.coastlines()
         meshes.append(mesh)
