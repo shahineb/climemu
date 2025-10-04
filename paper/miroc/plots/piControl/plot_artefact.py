@@ -12,7 +12,7 @@ if base_dir not in sys.path:
     sys.path.append(base_dir)
 
 from paper.miroc.config import Config
-from paper.miroc.plots.piControl.utils import load_data, setup_figure, save_plot, wrap_lon, add_seasonal_coords
+from paper.miroc.plots.piControl.utils import load_data, setup_figure, save_plot, wrap_lon, add_seasonal_coords, myRdPu
 
 
 # =============================================================================
@@ -90,12 +90,13 @@ climatology, piControl_diffusion, piControl_cmip6 = load_data(config, in_memory=
 # Add seasonal coordinates
 piControl_diffusion = add_seasonal_coords(piControl_diffusion)
 piControl_cmip6 = add_seasonal_coords(piControl_cmip6)
-piControl_diffusion = piControl_diffusion + climatology
 
-# Compute data for plotting
+# Compute emd to noise data
 emd = get_plot_data(piControl_cmip6['sfcWind'] - climatology['sfcWind'], piControl_diffusion['sfcWind'])
 max_emd = xr.concat(list(emd.values()), dim="season").max(dim="season")
 
+# Get data for plotting
+piControl_diffusion = piControl_diffusion + climatology
 sfcWind_data, sfcWind_emulator = get_south_american_data(piControl_cmip6, piControl_diffusion)
 q10_ds = get_quantile_data(piControl_cmip6)
 
@@ -144,14 +145,14 @@ def create_artefact_plot():
     
     # Max EMD map
     ax = fig.add_subplot(gs[0, 5], projection=ccrs.Robinson())
-    mesh = max_emd.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), cmap="RdPu", add_colorbar=False)
+    mesh = max_emd.plot.pcolormesh(ax=ax, transform=ccrs.PlateCarree(), cmap=myRdPu, add_colorbar=False)
     ax.coastlines()
     ax.set_title("Max. EMD-to-noise across seasons", weight="bold")
     mesh.set_clim(0, 1)
     
     # Colorbar for EMD
     cax = fig.add_subplot(gs[0, 6])
-    cbar = fig.colorbar(mesh, cax=cax, orientation='vertical')
+    cbar = fig.colorbar(mesh, cax=cax, orientation='vertical', extend="max")
     cbar.ax.set_yticks([0, 1])
     cbar.set_label("[1]", labelpad=-1)
     pos = cax.get_position()
@@ -162,7 +163,6 @@ def create_artefact_plot():
     cax.set_position([new_x0, new_y0, new_width, new_height])
     
     return fig
-
 
 def main():
     """Main function to generate artefact plot."""
