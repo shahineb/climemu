@@ -10,13 +10,13 @@ requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
     "diffrax>=0.7,<0.8",
-    "einops>=0.8<0.9",
-    "equinox>=0.13<0.14",
-    "huggingface-hub>=0.35<0.36",
+    "einops>=0.8,<0.9",
+    "equinox>=0.13,<0.14",
+    "huggingface-hub>=0.35,<0.36",
     "jax>=0.5,<0.8",
     "netcdf4>=1.7.2",
     "numpy>=2.0,<2.4",
-    "xarray>=2024.1.0<2026",
+    "xarray>=2024.1.0,<2026",
 ]
 
 [project.optional-dependencies]
