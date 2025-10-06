@@ -3,8 +3,7 @@
 
 # ESM Emulation with diffusion models in JAX
 
-This repository contains the implementation for the paper **"Score-based generative emulation of impact-relevant earth system model outputs"**. Codebase allows to run emulators of monthly averaged near-surface temperature, precipitation, relative humidity, wind speed for MPI-ESM1-2-LR, MIROC6, ACCESS-ESM1-5.
-
+Codebase allows to run emulators of monthly averaged near-surface temperature, precipitation, relative humidity, wind speed for MPI-ESM1-2-LR, MIROC6, ACCESS-ESM1-5.
 
 ## Installation
 
