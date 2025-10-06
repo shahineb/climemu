@@ -9,10 +9,11 @@ Codebase allows to run emulators of monthly averaged near-surface temperature, p
 
 Code tested on Python ≥3.11. GPU support is required for practical usage. Install from PyPI:
 
-|-----------------|----------------------------------------------------------------------------------------------------------------|
-| CPU             | `pip install climemu`                                                                                          |
-| NVIDIA GPU      | `pip install climemu[cuda12]`                                                                                  |
-| Google TPU      | `pip install climemu[tpu]`                                                                                     |
+<table>
+  <tr><td>CPU</td><td><code>pip install climemu</code></td></tr>
+  <tr><td>NVIDIA GPU</td><td><code>pip install climemu[cuda12]</code></td></tr>
+  <tr><td>Google TPU</td><td><code>pip install climemu[tpu]</code></td></tr>
+</table>
 
 
 ## Usage
