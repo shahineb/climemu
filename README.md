@@ -3,16 +3,17 @@
 
 # ESM Emulation with diffusion models in JAX
 
-This repository contains the implementation for the paper **"Score-based generative emulation of impact-relevant earth system model outputs"**. Codebase allows to run emulators of monthly averaged near-surface temperature, precipitation, relative humidity, wind speed for MPI-ESM1-2-LR, MIROC6, ACCESS-ESM1-5.
-
+Codebase allows to run emulators of monthly averaged near-surface temperature, precipitation, relative humidity, wind speed for MPI-ESM1-2-LR, MIROC6, ACCESS-ESM1-5.
 
 ## Installation
 
 Code tested on Python ≥3.11. GPU support is required for practical usage. Install from PyPI:
 
-| CPU             | `pip install climemu`                                                                                          |
-| NVIDIA GPU      | `pip install climemu[cuda12]`                                                                                  |
-| Google TPU      | `pip install climemu[tpu]`                                                                                     |
+<table>
+  <tr><td>CPU</td><td><code>pip install climemu</code></td></tr>
+  <tr><td>NVIDIA GPU</td><td><code>pip install climemu[cuda12]</code></td></tr>
+  <tr><td>Google TPU</td><td><code>pip install climemu[tpu]</code></td></tr>
+</table>
 
 
 ## Usage
