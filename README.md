@@ -35,6 +35,8 @@ samples = emulator(gmst=2,       # GMST anomaly wrt piControl (°C)
                    xarray=True)  # Return xr.Dataset
 ```
 
+Try it in collab: [![Demo](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/shahineb/climemu/blob/main/examples/collab-demo.ipynb)
+
 :warning: _Default model files for usage are trained on the full set of Tier I SSP simulations. To reproduce the paper results follow [instructions](paper/README.md)_.
 
 
