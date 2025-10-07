@@ -18,7 +18,7 @@ Code tested on Python ≥3.11. GPU support is required for practical usage. Inst
 
 
 ## Usage
-Try it in collab [![Demo](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/shahineb/climemu/blob/main/examples/collab-demo.ipynb)
+[![Demo](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/shahineb/climemu/blob/main/examples/collab-demo.ipynb)
 
 ```python
 import climemu
