@@ -18,6 +18,8 @@ Code tested on Python ≥3.11. GPU support is required for practical usage. Inst
 
 
 ## Usage
+Try it in collab [![Demo](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/shahineb/climemu/blob/main/examples/collab-demo.ipynb)
+
 ```python
 import climemu
 
@@ -35,8 +37,6 @@ samples = emulator(gmst=2,       # GMST anomaly wrt piControl (°C)
                    xarray=True)  # Return xr.Dataset
 ```
 :warning: _Default model files for usage are trained on the full set of Tier I SSP simulations. To reproduce the paper results follow [instructions](paper/README.md)_.
-
-__Try it in collab__ [![Demo](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/shahineb/climemu/blob/main/examples/collab-demo.ipynb)
 
 
 
