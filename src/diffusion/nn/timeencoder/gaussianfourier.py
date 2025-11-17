@@ -32,3 +32,35 @@ class GaussianFourierProjection(eqx.Module):
         Bt = self.B * t
         temb = jnp.concatenate((jnp.sin(Bt), jnp.cos(Bt)), axis=-1)
         return temb
+
+
+class DoYFourierProjection(eqx.Module):
+    """Day-of-Year embedding using Fourier features.
+
+    Projects day-of-year inputs into a higher-dimensional embedding using
+    Fourier features (sinusoidal basis with linearly spaced frequencies).
+
+    Day-of-year is assumed to be in [1, 365] (no leap years).
+
+    Attributes:
+        k: jnp.ndarray of shape (d//2,), linearly spaced frequency multipliers.
+    """
+    k: jax.Array
+
+    def __init__(self, d: int):
+        """
+        Args:
+            d: Output embedding dimension (must be even).
+        Raises:
+            ValueError: If `d` is not even.
+        """
+        if d % 2 != 0:
+            raise ValueError(f"Output dimension d must be even, got {d}") 
+        half_d = d // 2
+        self.k = 1 + jnp.arange(half_d)
+
+    def __call__(self, doy):
+        θ = 2 * jnp.pi * (((doy - 1.0) % 365) / 365)
+        kθ = self.k * θ
+        doy_emb = jnp.concatenate((jnp.sin(kθ), jnp.cos(kθ)), axis=-1)
+        return doy_emb

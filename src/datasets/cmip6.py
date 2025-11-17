@@ -5,7 +5,7 @@ import numpy as np
 import xarray as xr
 from torch.utils.data import Dataset
 from dask.diagnostics import ProgressBar
-from .constants import SECONDS_PER_DAY, TABLE_ID
+from .constants import SECONDS_PER_DAY
 
 
 class CMIP6Data(Dataset):
@@ -19,7 +19,7 @@ class CMIP6Data(Dataset):
     The data is organized in a hierarchical structure using xarray.DataTree for efficient
     access and manipulation of multi-dimensional climate data.
     """
-    def __init__(self, root: str, model: str, experiments: List[str], variables: List[str], subset: Optional[Dict] = None):
+    def __init__(self, root: str, model: str, experiments: List[str], variables: List[str], frequency: str, table_id: str, subset: Optional[Dict] = None):
         """Initialize the CMIP6 dataset.
 
         Args:
@@ -27,6 +27,7 @@ class CMIP6Data(Dataset):
             model: Climate model name (e.g., 'MPI-ESM1-2-LR').
             experiments: List of experiment names (e.g., ['ssp245', 'ssp585']).
             variables: List of climate variables (e.g., ['tas', 'pr']).
+            frequency: Data frequency ('monthly', 'daily').
             subset: Optional dictionary of dimensions to subset the data.
 
         Raises:
@@ -35,12 +36,14 @@ class CMIP6Data(Dataset):
         self.root = root
         self.model = model
         self.variables = variables
+        self.frequency = frequency
+        self.table_id = table_id
         self._init_dtree(experiments, subset)
         self._init_indexmap()
 
     @staticmethod
     def get_file_path(root: str, model: str, experiment: str, variable: str, 
-                      variant: str, table_id: str = TABLE_ID) -> str:
+                      variant: str, frequency: str, table_id: str) -> str:
         """Construct the file path for a given model configuration.
 
         Args:
@@ -49,12 +52,13 @@ class CMIP6Data(Dataset):
             experiment: Experiment name.
             variable: Variable name.
             variant: Variant identifier.
-            table_id: Table identifier (default: TABLE_ID).
+            frequency: Data frequency.
+            table_id: Table identifier.
 
         Returns:
             str: Constructed file path.
         """
-        filename = f"{variable}_{table_id}_{model}_{experiment}_{variant}_monthly_anomaly.nc"
+        filename = f"{variable}_{table_id}_{model}_{experiment}_{variant}_{frequency}_anomaly.nc"
         path = os.path.join(root, model, experiment, variant, f"{variable}_anomaly", table_id, filename)
         return path
 
@@ -77,7 +81,7 @@ class CMIP6Data(Dataset):
 
         variants = os.listdir(experiment_dir)
         file_paths = [
-            self.get_file_path(self.root, self.model, experiment, variable, variant)
+            self.get_file_path(self.root, self.model, experiment, variable, variant, self.frequency, self.table_id)
             for variant in variants
         ]
         existing_paths = list(filter(os.path.isfile, file_paths))

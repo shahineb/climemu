@@ -1,3 +1,3 @@
-from .healpixunet import HealPIXUNet
+from .healpixunet import HealPIXUNet, HealPIXUNetDoY
 
-__all__ = ['HealPIXUNet']
+__all__ = ['HealPIXUNet', 'HealPIXUNetDoY']

@@ -7,7 +7,15 @@ import jax.random as jr
 
 from .backbones import ConvNet
 from .modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
-from .timeencoder import GaussianFourierProjection
+from .timeencoder import GaussianFourierProjection, DoYFourierProjection
+
+# import os, sys
+# base_dir = os.path.join(os.getcwd(), '../../..')
+# if base_dir not in sys.path:
+#     sys.path.append(base_dir)
+# from src.diffusion.nn.backbones import ConvNet
+# from src.diffusion.nn.modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
+# from src.diffusion.nn.timeencoder.gaussianfourier import GaussianFourierProjection, DoYFourierProjection
 
 
 class ResnetBlockDown(eqx.Module):
@@ -557,3 +565,114 @@ class HealPIXUNet(eqx.Module):
         # Map back to latlon
         output = self.to_latlon(output).reshape(-1, nlat, nlon)
         return output
+
+
+class HealPIXUNetDoY(HealPIXUNet):
+    doy_embedding: DoYFourierProjection
+    def __init__(self,
+                 input_size: Tuple[int, ...],
+                 nside: int,
+                 enc_filters: List[int],
+                 dec_filters: List[int],
+                 out_channels: int,
+                 temb_dim: int,
+                 doyemb_dim: int,
+                 healpix_emb_dim: int,
+                 edges_to_healpix: jax.Array,
+                 edges_to_latlon: jax.Array,
+                 key: jax.random.PRNGKey = jr.PRNGKey(0)):
+        in_channels = input_size[0]
+        npix = 12 * nside**2
+        self.embedding = GaussianFourierProjection(temb_dim)
+        self.doy_embedding = DoYFourierProjection(doyemb_dim)
+
+        key, χ = jr.split(key)
+        self.to_healpix = BipartiteRemap(in_channels=in_channels,
+                                         out_channels=healpix_emb_dim,
+                                         edges=edges_to_healpix,
+                                         key=χ)
+
+        key, χ = jr.split(key)
+        self.to_latlon = BipartiteRemap(in_channels=out_channels,
+                                        out_channels=out_channels,
+                                        edges=edges_to_latlon,
+                                        key=χ)
+
+        key, χ = jr.split(key)
+        in_encoder_dim = healpix_emb_dim + doyemb_dim
+        self.encoder = Encoder(input_size=(in_encoder_dim, npix),
+                               n_filters=enc_filters,
+                               temb_dim=temb_dim,
+                               key=χ)
+
+        key, χ = jr.split(key)
+        bottleneck_size = npix // (4 ** len(enc_filters))
+        self.decoder = Decoder(input_size=(enc_filters[-1], bottleneck_size),
+                               n_filters=dec_filters,
+                               skip_filters=enc_filters[::-1],
+                               temb_dim=temb_dim,
+                               key=χ)
+
+        key, χ = jr.split(key)
+        self.output_layer = eqx.nn.Conv1d(in_channels=dec_filters[-1],
+                                          out_channels=out_channels,
+                                          kernel_size=1,
+                                          key=χ)
+
+    def __call__(self, x: jax.Array, doy: jax.Array, t: jax.Array) -> jax.Array:
+        # Map to healpix
+        print("x", x.shape)
+        c, nlat, nlon = x.shape
+        x = self.to_healpix(x.reshape(c, -1))
+        print("x", x.shape)
+
+        # DoY embedding
+        doy_emb = self.doy_embedding(doy)
+        doy_emb = jnp.broadcast_to(doy_emb[:, None], (doy_emb.shape[0], x.shape[1]))
+        print("doy", doy.shape)
+        x = jnp.concatenate([x, doy_emb], axis=0)
+        print("x", x.shape)
+
+        # Time embedding
+        temb = self.embedding(t)
+
+        # Encoder path with skip connections
+        latent_features = self.encoder(x, temb)
+
+        # Decoder path using skip connections
+        output = self.decoder(latent_features, temb)
+
+        # Final convolution
+        output = self.output_layer(output)
+
+        # Map back to latlon
+        output = self.to_latlon(output).reshape(-1, nlat, nlon)
+        return output
+
+
+# # %%
+# edges_data = jnp.load("/Users/shahine/Documents/Research/MIT/code/repos/climemu/sandbox/edges.npz")
+# to_healpix = jnp.array(edges_data['to_healpix']).astype(jnp.int32)
+# to_latlon = jnp.array(edges_data['to_latlon']).astype(jnp.int32)
+
+
+# # %%
+# unet = HealPIXUNetDoY(input_size=(3, 96, 192),
+#                       nside=16,
+#                       enc_filters=[8, 8, 8],
+#                       dec_filters=[8, 8, 8],
+#                       out_channels=3,
+#                       temb_dim=128,
+#                       doyemb_dim=16,
+#                       healpix_emb_dim=16,
+#                       edges_to_healpix=to_healpix,
+#                       edges_to_latlon=to_latlon,
+#                       key=jr.PRNGKey(0))
+
+# # %%
+# x = jnp.ones((3, 96, 192))
+# doy = jnp.array([100])
+# t = jnp.array([0.5])
+
+# # %%
+# y = unet(x, doy, t)

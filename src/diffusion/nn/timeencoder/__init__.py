@@ -1,7 +1,9 @@
 from .gaussianfourier import (
-    GaussianFourierProjection
+    GaussianFourierProjection,
+    DoYFourierProjection
 )
 
 __all__ = [
-    "GaussianFourierProjection"
+    "GaussianFourierProjection",
+    "DoYFourierProjection",
 ]
