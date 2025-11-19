@@ -1,13 +1,14 @@
 # %%
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Union
 import os
+import shutil
 from functools import partial
 import xarray as xr
 import numpy as np
 import einops
 from sklearn.linear_model import LinearRegression
 from dask.diagnostics import ProgressBar
-from src.datasets import AmonCMIP6Data
+from src.datasets import AmonCMIP6Data, DayCMIP6Data, PatternToDayCMIP6Data
 from src.utils import arrays
 
 
@@ -20,11 +21,14 @@ def compute_gmst(
     force_recompute: bool = False
 ) -> xr.DataTree:
     # Try to load existing gmst data
-    if gmst_path and os.path.exists(gmst_path) and not force_recompute:
-        print(f"Loading gmst time series from {gmst_path}")
-        gmst = xr.open_datatree(gmst_path)
-        assert set(experiments) <= set(gmst.keys()), "GMST is missing some requested experiments, need to recompute."
-        return gmst, None
+    if gmst_path and os.path.exists(gmst_path):
+        if force_recompute:
+            os.remove(gmst_path)
+        else:
+            print(f"Loading gmst time series from {gmst_path}")
+            gmst = xr.open_datatree(gmst_path)
+            assert set(experiments) <= set(gmst.keys()), "GMST is missing some requested experiments, need to recompute."
+            return gmst, None
 
     # Load monthly temperature data
     cmip6data = AmonCMIP6Data(root=root,
@@ -47,53 +51,7 @@ def compute_gmst(
     return smooth_gmst, ensemble_mean_tas
 
 
-def fit_pattern_scaling(
-    gmst: xr.DataTree,
-    ensemble_mean_tas: xr.DataTree,
-    experiments: List[str],
-    pattern_scaling_path: str,
-    force_recompute: bool = False
-) -> np.ndarray:
-    # Try to load existing pattern scaling parameters
-    if pattern_scaling_path and os.path.exists(pattern_scaling_path) and not force_recompute:
-        print(f"Loading pattern scaling parameters from {pattern_scaling_path}")
-        β = np.load(pattern_scaling_path)
-        return β
-
-    # Extract arrays from datatree
-    print("Fitting pattern scaling parameters...")
-    X = []
-    Y = []
-    for e in experiments:
-        gmst = gmst[e].tas.values
-        tas = ensemble_mean_tas[e].tas.values
-        X.append(gmst)
-        Y.append(tas)
-    X = np.concatenate(X, axis=0)
-    Y = np.concatenate(Y, axis=0)
-
-    # Reshape for sklearn
-    X = X.reshape(-1, 1)
-    Y = einops.rearrange(Y, 't lat lon -> t (lat lon)')
-
-    # Fit linear regression model
-    lm = LinearRegression()
-    lm.fit(X, Y)
-
-    # Extract coefficients
-    β1 = lm.coef_.squeeze()
-    β0 = lm.intercept_.squeeze()
-    β = np.stack([β0, β1], axis=-1)
-
-    # Save computed pattern scaling parameters
-    if pattern_scaling_path:
-        np.save(pattern_scaling_path, β)
-        print(f"Saved pattern scaling parameters to {pattern_scaling_path}")
-    return β
-
-
-
-# # %%
+# %%
 # gmst, ensemble_mean_tas = compute_gmst(
 #     root="/home/shahineb/fs06/data/products/cmip6/processed",
 #     model="MPI-ESM1-2-LR",
@@ -104,10 +62,84 @@ def fit_pattern_scaling(
 
 
 # # %%
+# cmip6data  = DayCMIP6Data(root="/home/shahineb/fs06/data/products/cmip6/processed",
+#                        model="MPI-ESM1-2-LR",
+#                        variables=["tas"],
+#                        experiments={
+#                            "ssp126": ["r1i1p1f1", "r2i1p1f1", "r3i1p1f1"]
+#                        })
+
+
+# # %%
+# dataset = PatternToDayCMIP6Data(gmst=gmst, cmip6data=cmip6data)
+# dataset.fit(experiments=["ssp126"], ensemble_mean_tas=ensemble_mean_tas)
+
+# # %%
+# from torch.utils.data import DataLoader
+# from tqdm import tqdm
+
+# def numpy_collate(batch):
+#     return [np.stack(b, axis=0) for b in zip(*batch)]
+
+# train_loader = DataLoader(
+#         dataset,
+#         batch_size=8, 
+#         shuffle=True,
+#         collate_fn=numpy_collate
+#     )
+
+# # %%
+# %%time
+# i = 0
+# for batch in tqdm(train_loader):
+#     doy_batch, pattern_batch, cmip6_array_batch = batch
+#     i += 1
+#     if i >= 100:
+#         break
+
+# %%
+# # %%
+# doy, pattern, cmip6_array = dataset[366]
+
+# # %%
+# cmip6_slice = cmip6data[366]
+# cmip6_array = cmip6_slice.to_array().values
+
+# # %%
+# dataset.β
+
+# # %%
+
+# # %%
+# idx = 366
+
+# selected_data = cmip6data[idx]
+# year = selected_data.time.dt.year.item()
+# doy = selected_data.time.dt.dayofyear.item()
+# selected_data_array = selected_data.to_array().values
+# leaf_idx, _ = cmip6data.indexmap(idx)
+# experiment = cmip6data.dtree.leaves[leaf_idx].parent.name
+# gmst = selfgmst[experiment].sel(year=year).tas.item()
+# pattern = β[:, 0] + β[:, 1] * gmst
+
+
+
+# # selected_data = cmip6data[idx]
+# # year = selected_data.time.dt.year.item()
+
+# # %%
+# leaf_idx, _ = cmip6data.indexmap(idx)
+# experiment = cmip6data.dtree.leaves[leaf_idx].parent.name
+
+# # %%
+# gmst[experiment].sel(year=year).tas.item()
+
+
+# # %%
 # β = fit_pattern_scaling(
 #     ensemble_mean_tas=ensemble_mean_tas,
-#     gmst=gmst,
+#     gmst=selfgmst,
 #     experiments=["ssp126"],
 #     pattern_scaling_path="β.npy",
-#     force_recompute=True
+#     force_recompute=False
 # )

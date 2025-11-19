@@ -1,4 +1,3 @@
-# %%
 import os
 from typing import List, Optional, Dict, Union
 import functools
@@ -8,7 +7,6 @@ import xarray as xr
 from torch.utils.data import Dataset
 from dask.diagnostics import ProgressBar
 from .constants import SECONDS_PER_DAY
-SECONDS_PER_DAY = 86400
 
 
 class AmonCMIP6Data(Dataset):
@@ -309,6 +307,11 @@ class DayCMIP6Data(Dataset):
         """
         leaves_lengths = [leaf.ds.sizes["time"] for leaf in self.dtree.leaves]
         self._cumulative_leaves_lengths = np.cumsum([0] + leaves_lengths)
+        def indexmap(idx):
+            leaf_idx = np.searchsorted(self._cumulative_leaves_lengths, idx, "right") - 1
+            time_idx = idx - self._cumulative_leaves_lengths[leaf_idx]
+            return leaf_idx, time_idx
+        self.indexmap = indexmap
 
     def isel(self, *args, **kwargs) -> xr.Dataset:
         """Perform index-based selection on the dataset.
@@ -366,8 +369,7 @@ class DayCMIP6Data(Dataset):
         if isinstance(idx, str):
             return self.dtree[idx]
         elif isinstance(idx, int):
-            leaf_idx = np.searchsorted(self._cumulative_leaves_lengths, idx, "right") - 1
-            time_idx = idx - self._cumulative_leaves_lengths[leaf_idx]
+            leaf_idx, time_idx = self.indexmap(idx)
             return self.dtree.leaves[leaf_idx].ds.isel(time=time_idx)
         else:
             raise ValueError(f"Invalid index type: {type(idx)}")
@@ -439,85 +441,10 @@ class DayCMIP6Data(Dataset):
 
 
 # # %%
-# cmip6  = ZarrCMIP6Data(root="/home/shahineb/fs06/data/products/cmip6/processed",
+# cmip6  = DayCMIP6Data(root="/home/shahineb/fs06/data/products/cmip6/processed",
 #                        model="MPI-ESM1-2-LR",
 #                        variables=["tas"],
 #                        experiments={
 #                         #    "ssp126": ["r1i1p1f1", "r2i1p1f1", "r3i1p1f1"],
 #                            "ssp245": ["r1i1p1f1", "r2i1p1f1"]
 #                        })
-
-
-# # %%
-# def annual_mean(ds):
-#     try:
-#         return ds.groupby("time.year").mean("time")
-#     except (AttributeError, KeyError):
-#         return None
-
-
-# # %%
-# %%time
-# tas = cmip6.dtree.map_over_datasets(arrays.filter_var('tas'))
-
-
-# # %%
-# %%time
-# gmst = tas.map_over_datasets(arrays.global_mean)
-
-
-# # %%
-# e = cmip6.experiments[0]
-# variants_ds = [leaf.ds['tas'].chunk({"time": 365}) for leaf in gmst[e].children.values()]
-
-# # %%
-# annual_variant_ds = [annual_mean(ds) for ds in variants_ds]
-
-
-# # %%
-# ensemble_mean = xr.concat(annual_variant_ds, dim="variant").mean(dim="variant")
-
-
-# # %%
-# %%time
-# with ProgressBar():
-#     ensemble_mean = ensemble_mean.compute()
-
-
-# # %%
-# %%time
-# gmst["ssp245/r1i1p1f1"].ds.groupby("time.year").mean("time")
-
-
-# # %%
-# %%time
-# gmst = tas.map_over_datasets(arrays.global_mean)
-# # gmst = tas.map_over_datasets(arrays.global_mean).mean("member").compute()
-# # gmst = gmst.map_over_datasets(partial(arrays.moving_average, window=60))
-
-
-
-# # %%
-# from torch.utils.data import DataLoader
-# def numpy_collate(batch):
-#     return [np.stack(b, axis=0) for b in zip(*batch)]
-
-# # %%
-# dataloader = DataLoader(
-#         cmip6,
-#         batch_size=16, 
-#         shuffle=True,
-#         collate_fn=numpy_collate
-#     )
-
-# # %%
-# %%time
-# for batch in tqdm(dataloader):
-#     pass
-
-
-# # # %%
-# # class Foo(ZarrCMIP6Data):
-# #     def __getitem__(self, i):
-# #         ds = super().__getitem__(i)
-# #         return ds["tas"].values

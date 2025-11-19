@@ -4,11 +4,13 @@ from .cmip6 import (
 )
 
 from .pattern_to_cmip6 import (
-    PatternToCMIP6Dataset
+    PatternToAmonCMIP6Data,
+    PatternToDayCMIP6Data
 )
 
 __all__ = [
     "AmonCMIP6Data",
     "DayCMIP6Data",
-    "PatternToCMIP6Dataset"
+    "PatternToAmonCMIP6Data",
+    "PatternToDayCMIP6Data"
 ]

@@ -7,11 +7,11 @@ from torch.utils.data import Dataset
 from dask.diagnostics import ProgressBar
 from tqdm import tqdm
 from src.utils import arrays
-from .cmip6 import AmonCMIP6Data
+from .cmip6 import AmonCMIP6Data, DayCMIP6Data
 
 
 
-class PatternToCMIP6Dataset(Dataset):
+class PatternToAmonCMIP6Data(Dataset):
     """Dataset for CMIP6 pattern scaling using linear regression.
 
     The pattern scaling equation is:
@@ -189,4 +189,81 @@ class PatternToCMIP6Dataset(Dataset):
         Returns:
             str: String representation.
         """
-        return f"PatternScalingCMIP6Dataset(\n gmst={self.gmst}, \n cmip6data={self.cmip6data}\n)"
+        return f"PatternScalingtoAmonCMIP6Data(\n gmst={self.gmst}, \n cmip6data={self.cmip6data}\n)"
+    
+
+
+
+class PatternToDayCMIP6Data(Dataset):
+    def __init__(self, gmst: xr.DataTree, cmip6data: DayCMIP6Data, β: Optional[np.ndarray] = None):
+        self.cmip6data = cmip6data
+        self.gmst = gmst
+        self.β = β
+
+    def fit(self, experiments, ensemble_mean_tas):
+        # Extract arrays from datatree
+        print("Fitting pattern scaling parameters...")
+        X = []
+        Y = []
+        for e in experiments:
+            gmst = self.gmst[e].tas.values
+            tas = ensemble_mean_tas[e].tas.values
+            X.append(gmst)
+            Y.append(tas)
+        X = np.concatenate(X, axis=0)
+        Y = np.concatenate(Y, axis=0)
+
+        # Reshape for sklearn
+        X = X.reshape(-1, 1)
+        Y = einops.rearrange(Y, 't lat lon -> t (lat lon)')
+
+        # Fit linear regression model
+        lm = LinearRegression()
+        lm.fit(X, Y)
+
+        # Extract coefficients
+        β1 = lm.coef_.squeeze()
+        β0 = lm.intercept_.squeeze()
+        self.β = np.stack([β0, β1], axis=-1)
+
+    def save_pattern_scaling(self, path: str) -> None:
+        np.save(path, self.β)
+
+    def load_pattern_scaling(self, path: str) -> None:
+        self.β = np.load(path)
+
+    def predict_single_pattern(self, gmst: float) -> np.ndarray:
+        pattern = self.β[:, 0] + self.β[:, 1] * gmst
+        return pattern.reshape(self.cmip6data.nlat, self.cmip6data.nlon)
+    
+    def __len__(self) -> int:
+        return len(self.cmip6data)
+
+    def __getitem__(self, idx: Union[str, int]) -> Union[Dataset, Tuple[np.ndarray, np.ndarray]]:
+        if isinstance(idx, str):
+            return self.cmip6data[idx]
+        elif isinstance(idx, int):
+            # Get the selected data slice
+            cmip6_slice = self.cmip6data[idx]
+            year = cmip6_slice.time.dt.year.item()
+            doy = cmip6_slice.time.dt.dayofyear.item()
+
+            # Get corresponding gmst
+            leaf_idx, _ = self.cmip6data.indexmap(idx)
+            experiment = self.cmip6data.dtree.leaves[leaf_idx].parent.name
+            gmst = self.gmst[experiment].sel(year=year).tas.item()
+
+            # Return pattern scaling and data array
+            pattern = self.predict_single_pattern(gmst)
+            cmip6_array = cmip6_slice[self.cmip6data.variables].to_array().values
+            return doy, pattern, cmip6_array
+        else:
+            raise ValueError(f"Invalid index type: {type(idx)}")
+        
+    def __repr__(self) -> str:
+        """Get string representation of the dataset.
+
+        Returns:
+            str: String representation.
+        """
+        return f"PatternScalingtoDayCMIP6Data(\n gmst={self.gmst}, \n cmip6data={self.cmip6data}\n)"
