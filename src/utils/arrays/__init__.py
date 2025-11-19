@@ -3,7 +3,8 @@ from .reshape import (
 )
 
 from .aggregate import (
-    global_mean
+    global_mean,
+    annual_mean
 )
 
 from .convert import (
@@ -11,7 +12,8 @@ from .convert import (
 )
 
 from .smooth import (
-    moving_average
+    moving_average,
+    year_moving_average
 )
 
 from .filter import (
@@ -21,7 +23,9 @@ from .filter import (
 __all__ = [
     "groupby_month_and_year",
     "global_mean",
+    "annual_mean",
     "xarray_like",
     "moving_average",
+    "year_moving_average",
     "filter_var"
 ]

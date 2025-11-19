@@ -9,7 +9,7 @@ def global_mean(data, *args, **kwargs):
 
 
 @global_mean.register
-def _global_mean_datarray(data: xr.DataArray, lat_dim='lat', lon_dim='lon'):
+def _global_mean_dataarray(data: xr.DataArray, lat_dim='lat', lon_dim='lon'):
     """
     Computes the global mean of a gridded DataArray
     """
@@ -50,3 +50,24 @@ def _global_mean_numpy(data: np.ndarray, lat, lat_dim=0, lon_dim=1):
     weighted_sum = np.sum(data * wlat, axis=(lat_dim, lon_dim))
     global_mean = weighted_sum / data.shape[lon_dim]
     return global_mean
+
+
+@singledispatch
+def annual_mean(data, *args, **kwargs):
+    raise TypeError("Unsupported data type. Only xarray.DataArray and numpy.ndarray are supported.")
+
+
+@annual_mean.register
+def _annual_mean_dataset(data: xr.Dataset):
+    try:
+        return data.groupby("time.year").mean("time")
+    except (AttributeError, KeyError):
+        return None
+
+
+@annual_mean.register
+def _annual_mean_dataarray(data: xr.DataArray):
+    try:
+        return data.groupby("time.year").mean("time")
+    except (AttributeError, KeyError):
+        return None

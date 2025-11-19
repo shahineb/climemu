@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 from dask.diagnostics import ProgressBar
 from tqdm import tqdm
 from src.utils import arrays
-from .cmip6 import CMIP6Data
+from .cmip6 import AmonCMIP6Data
 
 
 
@@ -28,7 +28,7 @@ class PatternToCMIP6Dataset(Dataset):
     - Prediction of spatial temperature patterns
     """
 
-    def __init__(self, gmst: xr.DataTree, cmip6data: CMIP6Data, 
+    def __init__(self, gmst: xr.DataTree, cmip6data: AmonCMIP6Data, 
                  β: Optional[np.ndarray] = None, in_memory: bool = False):
         """Initialize the pattern scaling dataset.
 
