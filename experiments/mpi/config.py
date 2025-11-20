@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Dict, Tuple
 import os
 
 
@@ -37,9 +37,9 @@ class DataConfig:
     root_dir: str = "/orcd/data/raffaele/001/shahineb/cmip6/processed"  # CMIP6 data directory
     model_name: str = "MPI-ESM1-2-LR"  # Climate model to use
     # train_experiments: List[str] = ("piControl", "historical", "ssp126", "ssp585")  # Training experiments
-    train_experiments: List[str] = ("ssp126",)  # Training experiments
-    val_experiments: List[str] = ("ssp370",)  # Validation experiments
-    variables: List[str] = ("tas", "pr", "hurs", "sfcWind")  # Climate variables
+    train_experiments: Dict[str, List[str]] = {"ssp126": ["r1i1p1f1", "r2i1p1f1"]}  # Training experiments
+    val_experiments: List[str] = {"ssp245": ["r1i1p1f1", "r2i1p1f1"]}  # Validation experiments
+    variables: List[str] = ("tas",)  # Climate variables
     val_time_slice: Tuple[str, str] = ("2080-01", "2100-12")  # Time range for validation
     pattern_scaling_path: str = os.path.join(CACHE_DIR, "β.npy")  # Path to save/load pattern scaling coefficients
     norm_stats_path: str = os.path.join(CACHE_DIR, "μ_σ.npz")  # Path to save/load normalization statistics

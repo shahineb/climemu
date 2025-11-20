@@ -1,31 +1,79 @@
 import os
-import copy
 from typing import Dict, List, Optional, Tuple, Any
 
 import numpy as np
+import xarray as xr
 import jax.numpy as jnp
 import jax.random as jr
+from dask.diagnostics import ProgressBar
 
 from functools import partial
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Subset
 
-from src.utils import arrays
-from src.datasets import CMIP6Data, PatternToCMIP6Dataset
+
+
+# import sys
+# base_dir = os.path.join(os.getcwd(), '../..')
+# if base_dir not in sys.path:
+#     sys.path.append(base_dir)
+from src.utils import arrays, trees
+from src.datasets import AmonCMIP6Data, DayCMIP6Data, PatternToDayCMIP6Data
 from src.utils.collate import numpy_collate
 from . import utils
+# from experiments.mpi import utils
+
+
+
+def compute_annual_gmst(
+    root: str,
+    model: str,
+    experiments: List[str],
+    gmst_path: str,
+    force_recompute: bool = False
+) -> xr.DataTree:
+    # Try to load existing gmst data
+    if gmst_path and os.path.exists(gmst_path):
+        if force_recompute:
+            os.remove(gmst_path)
+        else:
+            print(f"Loading gmst time series from {gmst_path}")
+            gmst = xr.open_datatree(gmst_path)
+            assert set(experiments) <= set(gmst.keys()), "GMST is missing some requested experiments, need to recompute."
+            return gmst, None
+
+    # Load monthly temperature data
+    cmip6data = AmonCMIP6Data(root=root,
+                              model=model,
+                              experiments=experiments,
+                              variables=["tas"])
+    tas = cmip6data.dtree.map_over_datasets(arrays.filter_var('tas'))
+
+    # Compute annual gmst time series + 5-year moving average smoothing
+    ensemble_mean_tas = tas.map_over_datasets(arrays.annual_mean).mean("member")
+    with ProgressBar():
+        print("Computing GMST time series...")
+        ensemble_mean_tas = ensemble_mean_tas.compute()
+    gmst = ensemble_mean_tas.map_over_datasets(arrays.global_mean)
+    smooth_gmst = gmst.map_over_datasets(partial(arrays.year_moving_average, window=5))
+
+    # Save computed gmst data
+    if gmst_path:
+        smooth_gmst.to_netcdf(gmst_path)
+        print(f"Saved GMST time series to {gmst_path}")
+    return smooth_gmst, ensemble_mean_tas
 
 
 def load_dataset(
     root: str,
     model: str,
-    experiments: List[str],
+    experiments: Dict[str, List[str]],
     variables: List[str],
     subset: Optional[Dict[str, Any]] = None,
-    in_memory: bool = True,
+    gmst_path: Optional[str] = None,
     pattern_scaling_path: Optional[str] = None,
     external_β: Optional[jnp.ndarray] = None
-) -> PatternToCMIP6Dataset:
+) -> PatternToDayCMIP6Data:
     """Load and prepare a CMIP6 dataset with pattern scaling.
 
     Args:
@@ -52,35 +100,39 @@ def load_dataset(
     if subset:
         cmip6_kwargs["subset"] = subset
 
-    # Load CMIP6 data and compute global mean surface temperature
-    cmip6data = CMIP6Data(**cmip6_kwargs)
-    tas = cmip6data.dtree.map_over_datasets(arrays.filter_var('tas'))
-    gmst = tas.map_over_datasets(arrays.global_mean).mean("member").compute()
-    gmst = gmst.map_over_datasets(partial(arrays.moving_average, window=60))
+    # Create CMIP6 data instance
+    cmip6data = DayCMIP6Data(**cmip6_kwargs)
+
+    # Compute annual GMST time series
+    gmst, ensemble_mean_tas = compute_annual_gmst(root=root,
+                                                  model=model,
+                                                  experiments=list(experiments.keys()),
+                                                  gmst_path=gmst_path)
 
     # Handle pattern scaling coefficients (β) in different scenarios
     if external_β is not None:
         # Use externally provided coefficients (e.g., from training dataset)
-        dataset = PatternToCMIP6Dataset(gmst, cmip6data, external_β, in_memory=in_memory)
+        dataset = PatternToDayCMIP6Data(gmst, cmip6data, external_β)
     elif pattern_scaling_path and not os.path.exists(pattern_scaling_path):
         # Compute and save new coefficients
-        dataset = PatternToCMIP6Dataset(gmst, cmip6data, in_memory=in_memory)
-        dataset.fit(["historical", "ssp585"])
+        dataset = PatternToDayCMIP6Data(gmst, cmip6data)
+        dataset.fit(["historical", "ssp585"], ensemble_mean_tas)
         dataset.save_pattern_scaling(pattern_scaling_path)
+        print(f"Saved pattern scaling coefficients to {pattern_scaling_path}")
     elif pattern_scaling_path:
         # Load existing coefficients
-        dataset = PatternToCMIP6Dataset(gmst, cmip6data, in_memory=in_memory)
+        dataset = PatternToDayCMIP6Data(gmst, cmip6data)
         dataset.load_pattern_scaling(pattern_scaling_path)
+        print(f"Loaded pattern scaling coefficients from {pattern_scaling_path}")
     else:
         # Compute coefficients but don't save them
-        dataset = PatternToCMIP6Dataset(gmst, cmip6data, in_memory=in_memory)
-        dataset.fit()
-
+        dataset = PatternToDayCMIP6Data(gmst, cmip6data)
+        dataset.fit(["historical", "ssp585"], ensemble_mean_tas)
     return dataset
 
 
 def compute_normalization(
-    dataset: PatternToCMIP6Dataset,
+    dataset: PatternToDayCMIP6Data,
     batch_size: int,
     max_samples: int = 1000,
     seed: int = 42,
@@ -111,11 +163,14 @@ def compute_normalization(
         return stats['μ'], stats['σ']
 
     # Keep only piControl data
-    indexmap = dataset.cmip6data.indexmap
-    piControl_index = dataset.cmip6data.experiments.index("piControl")
-    subindexmap = indexmap[indexmap[:, 0] == piControl_index]
-    piControl_dataset = copy.deepcopy(dataset)
-    piControl_dataset.cmip6data.indexmap = subindexmap
+    piControldata = DayCMIP6Data(root=dataset.cmip6data.root,
+                                model=dataset.cmip6data.model,
+                                experiments={"piControl": ["r1i1p1f1"]},
+                                variables=dataset.cmip6data.variables)
+
+    piControl_dataset = PatternToDayCMIP6Data(cmip6data=piControldata,
+                                              gmst=trees.filter_datatree(dataset.gmst, ["piControl"]),
+                                              β=dataset.β)
 
     # Create a random subset of the dataset
     dataset_size = len(piControl_dataset)
@@ -139,7 +194,10 @@ def compute_normalization(
     for batch in tqdm(dummy_loader, desc=f"Computing μ, σ  (using {subset_size} samples)"):
         sample_shape = batch[-1].shape
         sample_shape = (1 + sample_shape[1], sample_shape[2], sample_shape[3])
-        x.append(utils.process_batch(batch, jnp.zeros(sample_shape), jnp.ones(sample_shape)))
+        μ0 = jnp.zeros(sample_shape)
+        σ0 = jnp.ones(sample_shape)
+        _, x0 = utils.process_batch(batch, μ0, σ0)
+        x.append(x0)
     
     # Compute mean and stddev across all batches
     x = jnp.concatenate(x)
@@ -154,7 +212,7 @@ def compute_normalization(
 
 
 def estimate_sigma_max(
-    dataset: PatternToCMIP6Dataset,
+    dataset: PatternToDayCMIP6Data,
     μ: jnp.ndarray,
     σ: jnp.ndarray,
     ctx_size: int,
@@ -246,3 +304,34 @@ def estimate_sigma_max(
         print(f"Saving σmax = {σmax} to {sigma_max_path}")
         np.save(sigma_max_path, σmax)
     return σmax
+
+
+# # %%
+# dataset = load_dataset(
+#     root="/home/shahineb/fs06/data/products/cmip6/processed",
+#     model="MPI-ESM1-2-LR",
+#     experiments={"ssp126": ["r1i1p1f1", "r2i1p1f1"]},
+#     variables=["tas"],
+#     gmst_path="./gmst.nc",
+#     pattern_scaling_path="./β.npy",
+# )
+
+
+# # %%
+# μ, σ = compute_normalization(
+#     dataset=dataset,
+#     batch_size=16,
+#     max_samples=1000,
+#     norm_stats_path="./norm_stats.npz",
+# )
+
+
+# # %%
+# σmax = estimate_sigma_max(
+#     dataset=dataset,
+#     μ=μ,
+#     σ=σ,
+#     ctx_size=1,
+#     search_interval=[1, 200],
+#     sigma_max_path="./sigma_max.npy",
+# )

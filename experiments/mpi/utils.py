@@ -71,9 +71,9 @@ def process_single(pattern: jnp.ndarray, sample: jnp.ndarray, μ: jnp.ndarray, �
 @eqx.filter_jit
 def process_batch(batch: Tuple, μ: jnp.ndarray, σ: jnp.ndarray) -> jnp.ndarray:
     """Process a batch of samples."""
-    patterns, samples = batch
+    doys, patterns, samples = batch
     x = jax.vmap(partial(process_single, μ=μ, σ=σ))(patterns, samples)
-    return x
+    return doys, x
 
 
 
@@ -96,7 +96,8 @@ def estimate_power(dataset, σmax, α, n_montecarlo, npool, μ, σ, ctx_size, ke
         pbar.set_description(f"Estimating power for σmax = {σmax:.1f}")
         for batch in dummy_loader:
             # Draw sample and flatten
-            x = process_batch(batch, μ, σ)[:, :-ctx_size]
+            _, x = process_batch(batch, μ, σ)
+            x = x[:, :-ctx_size]
             x0 = np.array(x.ravel())
             x0 = np.random.choice(x0, size=npool, replace=False)
 

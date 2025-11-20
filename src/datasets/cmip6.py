@@ -262,6 +262,7 @@ class DayCMIP6Data(Dataset):
         self.root = root
         self.model = model
         self.variables = variables
+        self.experiments = experiments
         self.time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
         self._init_dtree(experiments, subset)
         self._init_indexmap()
@@ -373,15 +374,6 @@ class DayCMIP6Data(Dataset):
             return self.dtree.leaves[leaf_idx].ds.isel(time=time_idx)
         else:
             raise ValueError(f"Invalid index type: {type(idx)}")
-        
-    @functools.cached_property
-    def experiments(self) -> List[str]:
-        """Get list of experiment names.
-
-        Returns:
-            List[str]: List of experiment names.
-        """
-        return list(self.dtree.keys())
 
     @functools.cached_property
     def paths(self) -> List[str]:
