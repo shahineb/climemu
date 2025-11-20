@@ -41,6 +41,8 @@ class DataConfig:
     val_experiments: List[str] = {"ssp245": ["r1i1p1f1", "r2i1p1f1"]}  # Validation experiments
     variables: List[str] = ("tas",)  # Climate variables
     val_time_slice: Tuple[str, str] = ("2080-01", "2100-12")  # Time range for validation
+    train_gmst_path: str = os.path.join(CACHE_DIR, "train_gmst.nc")  # Path to save/load precomputed annual GMST anomaly time series
+    val_gmst_path: str = os.path.join(CACHE_DIR, "val_gmst.nc")  # Path to save/load precomputed annual GMST anomaly time series
     pattern_scaling_path: str = os.path.join(CACHE_DIR, "β.npy")  # Path to save/load pattern scaling coefficients
     norm_stats_path: str = os.path.join(CACHE_DIR, "μ_σ.npz")  # Path to save/load normalization statistics
     in_memory: bool = True  # Whether to load full dataset into memory

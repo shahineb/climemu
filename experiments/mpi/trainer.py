@@ -12,8 +12,8 @@ from torch.utils.data import DataLoader
 import wandb
 
 from src.utils.collate import numpy_collate
-from src.diffusion import denoising_make_step, denoising_batch_loss
-from src.datasets import PatternToCMIP6Dataset
+from src.diffusion import denoising_make_step_doy, denoising_batch_loss_doy
+from src.datasets import PatternToDayCMIP6Data
 from paper.mpi.config import Config
 from . import utils
 
@@ -83,12 +83,12 @@ def train_epoch(
     with tqdm(total=n_train_steps) as pbar:
         for batch in train_loader:
             # Process batch and normalize
-            x = utils.process_batch(batch, μ, σ)
+            doy, x = utils.process_batch(batch, μ, σ)
             _, χtrain = jr.split(χtrain)
             
             # Perform a single optimization step
-            value, model, χtrain, opt_state, grad_norm = denoising_make_step(
-                state.model, config.model.context_channels, schedule, x, χtrain, state.opt_state, optimizer.update
+            value, model, χtrain, opt_state, grad_norm = denoising_make_step_doy(
+                state.model, config.model.context_channels, schedule, x, doy, χtrain, state.opt_state, optimizer.update
             )
 
             # Update training state
@@ -125,9 +125,9 @@ def train_epoch(
     with tqdm(total=n_val_steps, desc="Evaluation") as pbar:        
         for batch_idx, batch in enumerate(val_loader):
             # Process batch and compute validation loss
-            x = utils.process_batch(batch, μ, σ)
-            val_value = denoising_batch_loss(
-                state.ema_model, config.model.context_channels, schedule, x, χval
+            doy, x = utils.process_batch(batch, μ, σ)
+            val_value = denoising_batch_loss_doy(
+                state.ema_model, config.model.context_channels, schedule, x, doy, χval
             )
             val_loss += val_value.item()
             # Update progress bar
@@ -147,8 +147,8 @@ def train_epoch(
 
 def train(
     model: eqx.Module,
-    train_dataset: PatternToCMIP6Dataset,
-    val_dataset: PatternToCMIP6Dataset,
+    train_dataset: PatternToDayCMIP6Data,
+    val_dataset: PatternToDayCMIP6Data,
     schedule: object,
     μ: jnp.ndarray,
     σ: jnp.ndarray,
@@ -194,7 +194,7 @@ def train(
     )
 
     # Get a single batch used visualization and metrics logging
-    log_pattern, log_target_data = utils.get_sample_batch(
+    lod_doy, log_pattern, log_target_data = utils.get_sample_batch(
         dataset=train_dataset,
         batch_size=16,
         key=jr.PRNGKey(config.training.random_seed)
@@ -202,6 +202,7 @@ def train(
     log_sampler = partial(
         utils.draw_samples_batch,
         schedule=schedule,
+        doy_batch=lod_doy,
         pattern_batch=log_pattern,
         n_samples=config.training.sample_count,
         n_steps=config.training.sample_steps,

@@ -115,26 +115,26 @@ def estimate_power(dataset, σmax, α, n_montecarlo, npool, μ, σ, ctx_size, ke
 ################################################################################
 
 
-def create_sampler(model: eqx.Module, schedule: Any, pattern: jnp.ndarray,
+def create_sampler(model: eqx.Module, schedule: Any, doy: jnp.ndarray, pattern: jnp.ndarray,
                    μ: jnp.ndarray, σ: jnp.ndarray, output_size: Tuple) -> ContinuousHeunSampler:
     """Create a sampler for a given pattern."""
     context = normalize(pattern, μ[-1], σ[-1])[None, ...]
     def model_with_context(x, t):
         x = jnp.concatenate((x, context), axis=0)
-        return model(x, t)
+        return model(x, doy, t)
     return ContinuousHeunSampler(schedule, model_with_context, output_size)
 
 @eqx.filter_jit
-def draw_samples_single(model: eqx.Module, schedule: Any, pattern: jnp.ndarray,
+def draw_samples_single(model: eqx.Module, schedule: Any, doy: jnp.ndarray, pattern: jnp.ndarray,
                         n_samples: int, n_steps: int, μ: jnp.ndarray, σ: jnp.ndarray,
                         output_size: Tuple, key: jr.PRNGKey = jr.PRNGKey(0)) -> jnp.ndarray:
     """Draw samples for a given pattern."""
-    sampler = create_sampler(model, schedule, pattern, μ, σ, output_size)
+    sampler = create_sampler(model, schedule, doy, pattern, μ, σ, output_size)
     samples = sampler.sample(n_samples, steps=n_steps, key=key)
     return denormalize(samples, μ[:-1], σ[:-1])
 
 @eqx.filter_jit
-def draw_samples_batch(model: eqx.Module, schedule: Any, pattern_batch: jnp.ndarray,
+def draw_samples_batch(model: eqx.Module, schedule: Any, pattern_batch: jnp.ndarray, doy_batch: jnp.ndarray,
                        n_samples: int, n_steps: int, μ: jnp.ndarray,
                        σ: jnp.ndarray, output_size: Tuple, key: jr.PRNGKey = jr.PRNGKey(0)) -> jnp.ndarray:
     """Draw samples for a batch of patterns."""
@@ -145,7 +145,7 @@ def draw_samples_batch(model: eqx.Module, schedule: Any, pattern_batch: jnp.ndar
                 n_samples=n_samples,
                 n_steps=n_steps, μ=μ, σ=σ,
                 output_size=output_size)
-    return jax.vmap(Γ)(pattern=pattern_batch, key=keys)
+    return jax.vmap(Γ)(doy=doy_batch, pattern=pattern_batch, key=keys)
 
 
 

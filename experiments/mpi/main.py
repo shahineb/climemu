@@ -1,6 +1,6 @@
 import equinox as eqx
 
-from src.diffusion import HealPIXUNet, ContinuousVESchedule
+from src.diffusion import HealPIXUNetDoY, ContinuousVESchedule
 from .config import Config
 from .data import load_dataset, compute_normalization, estimate_sigma_max
 from .trainer import train
@@ -28,7 +28,7 @@ def main():
         model=config.data.model_name,
         experiments=config.data.train_experiments,
         variables=config.data.variables,
-        in_memory=config.data.in_memory,
+        gmst_path=config.data.train_gmst_path,
         pattern_scaling_path=config.data.pattern_scaling_path
     )
     
@@ -40,7 +40,7 @@ def main():
         experiments=config.data.val_experiments,
         variables=config.data.variables,
         subset={'time': slice(*config.data.val_time_slice)},
-        in_memory=config.data.in_memory,
+        gmst_path=config.data.val_gmst_path,
         external_β=train_dataset.β  # Use training pattern scaling coefficients
     )
     
@@ -78,13 +78,14 @@ def main():
     )
 
     # Initialize the UNet model for diffusion
-    model = HealPIXUNet(
+    model = HealPIXUNetDoY(
         input_size=config.model.input_size,
         nside=config.model.nside,
         enc_filters=list(config.model.enc_filters),
         dec_filters=list(config.model.dec_filters),
         out_channels=config.model.out_channels,
         temb_dim=config.model.temb_dim,
+        doyemb_dim=config.model.doyemb_dim,
         healpix_emb_dim=config.model.healpix_emb_dim,
         edges_to_healpix=edges_to_healpix,
         edges_to_latlon=edges_to_latlon

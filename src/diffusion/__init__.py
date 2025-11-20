@@ -1,10 +1,13 @@
 from .nn import (
-    HealPIXUNet
+    HealPIXUNet,
+    HealPIXUNetDoY
 )
 
 from .losses import (
     denoising_make_step,
-    denoising_batch_loss
+    denoising_batch_loss,
+    denoising_make_step_doy,
+    denoising_batch_loss_doy
 )
 
 from .schedules import (
@@ -18,8 +21,11 @@ from .samplers import (
 
 __all__ = [
     "HealPIXUNet",
+    "HealPIXUNetDoY",
     "denoising_make_step",
     "denoising_batch_loss",
+    "denoising_make_step_doy",
+    "denoising_batch_loss_doy",
     "ContinuousVESchedule",
     "ContinuousHeunSampler"
 ]
