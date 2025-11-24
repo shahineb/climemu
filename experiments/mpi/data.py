@@ -13,15 +13,15 @@ from torch.utils.data import DataLoader, Subset
 
 
 
-import sys
-base_dir = os.path.join(os.getcwd(), '../..')
-if base_dir not in sys.path:
-    sys.path.append(base_dir)
+# import sys
+# base_dir = os.path.join(os.getcwd(), '../..')
+# if base_dir not in sys.path:
+#     sys.path.append(base_dir)
 from src.utils import arrays, trees
 from src.datasets import AmonCMIP6Data, DayCMIP6Data, PatternToDayCMIP6Data
 from src.utils.collate import numpy_collate
-# from . import utils
-from experiments.mpi import utils
+from . import utils
+# from experiments.mpi import utils
 
 
 
@@ -117,8 +117,8 @@ def load_dataset(
     elif pattern_scaling_path and not os.path.exists(pattern_scaling_path):
         # Compute and save new coefficients
         dataset = PatternToDayCMIP6Data(gmst, cmip6data)
-        dataset.fit(["historical", "ssp585"], ensemble_mean_tas)
-        # dataset.fit(["ssp126"], ensemble_mean_tas)
+        # dataset.fit(["historical", "ssp585"], ensemble_mean_tas)
+        dataset.fit(["ssp126"], ensemble_mean_tas)
         dataset.save_pattern_scaling(pattern_scaling_path)
         print(f"Saved pattern scaling coefficients to {pattern_scaling_path}")
     elif pattern_scaling_path:
@@ -166,9 +166,9 @@ def compute_normalization(
 
     # Keep only piControl data
     piControldata = DayCMIP6Data(root=dataset.cmip6data.root,
-                                model=dataset.cmip6data.model,
-                                experiments={"piControl": ["r1i1p1f1"]},
-                                variables=dataset.cmip6data.variables)
+                                 model=dataset.cmip6data.model,
+                                 experiments={"piControl": ["r1i1p1f1"]},
+                                 variables=dataset.cmip6data.variables)
 
     piControl_dataset = PatternToDayCMIP6Data(cmip6data=piControldata,
                                               gmst=trees.filter_datatree(dataset.gmst, ["piControl"]),
@@ -193,11 +193,12 @@ def compute_normalization(
     
     # Process each batch and collect results
     x = []
+    batch = next(iter(dummy_loader))
+    sample_shape = batch[-1].shape
+    sample_shape = (1 + sample_shape[1], sample_shape[2], sample_shape[3])
+    μ0 = jnp.zeros(sample_shape)
+    σ0 = jnp.ones(sample_shape)
     for batch in tqdm(dummy_loader, desc=f"Computing μ, σ  (using {subset_size} samples)"):
-        sample_shape = batch[-1].shape
-        sample_shape = (1 + sample_shape[1], sample_shape[2], sample_shape[3])
-        μ0 = jnp.zeros(sample_shape)
-        σ0 = jnp.ones(sample_shape)
         _, x0 = utils.process_batch(batch, μ0, σ0)
         x.append(x0)
     
@@ -307,6 +308,19 @@ def estimate_sigma_max(
         np.save(sigma_max_path, σmax)
     return σmax
 
+
+
+
+######
+
+# dataset = load_dataset(
+#     root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
+#     model="MPI-ESM1-2-LR",
+#     experiments={"ssp126": ["r1i1p1f1", "r2i1p1f1"]},
+#     variables=["tas", "pr", "hurs", "sfcWind"],
+#     gmst_path="./gmst.nc",
+#     pattern_scaling_path="./β.npy",
+# )
 
 
 

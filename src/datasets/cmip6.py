@@ -261,7 +261,7 @@ class DayCMIP6Data(Dataset):
     def __init__(self, root: str, model: str, variables: List, experiments: Dict, subset: Optional[Dict] = None):
         self.root = root
         self.model = model
-        self.variables = variables
+        self.variables = list(variables)
         self.experiments = experiments
         self.time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
         self._init_dtree(experiments, subset)

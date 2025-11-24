@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Tuple
 import os
 
 
@@ -16,10 +15,10 @@ class ModelConfig:
     Defines the UNet structure used for the diffusion model, including input dimensions,
     filter counts for encoder/decoder paths, and embedding dimensions.
     """
-    input_size: Tuple[int, int, int] = (5, 96, 192)  # (channels, nlat, nlon)
+    input_size: tuple = (5, 96, 192)  # (channels, nlat, nlon)
     nside: int = 64  # HEALPix nside parameter
-    enc_filters: List[int] = (32, 64, 128, 256, 512)  # Filter counts for each encoder block
-    dec_filters: List[int] = (256, 128, 64, 32, 32)  # Filter counts for each decoder block
+    enc_filters: tuple = (32, 64, 128, 256, 512)  # Filter counts for each encoder block
+    dec_filters: tuple = (256, 128, 64, 32, 32)  # Filter counts for each decoder block
     out_channels: int = 4  # Number of output channels
     temb_dim: int = 256  # Dimension for time embeddings
     doyemb_dim: int = 16  # Dimension for day-of-year embeddings
@@ -34,21 +33,30 @@ class DataConfig:
 
     Specifies dataset paths, climate model, experiments, and pattern scaling parameters.
     """
-    root_dir: str = "/orcd/data/raffaele/001/shahineb/cmip6/processed"  # CMIP6 data directory
+    root_dir: str = "/orcd/data/raffaele/001/shahineb/products/cmip6/processed"  # CMIP6 data directory
     model_name: str = "MPI-ESM1-2-LR"  # Climate model to use
-    # train_experiments: List[str] = ("piControl", "historical", "ssp126", "ssp585")  # Training experiments
-    train_experiments: Dict[str, List[str]] = {"ssp126": ["r1i1p1f1", "r2i1p1f1"]}  # Training experiments
-    val_experiments: List[str] = {"ssp245": ["r1i1p1f1", "r2i1p1f1"]}  # Validation experiments
-    variables: List[str] = ("tas",)  # Climate variables
-    val_time_slice: Tuple[str, str] = ("2080-01", "2100-12")  # Time range for validation
-    train_gmst_path: str = os.path.join(CACHE_DIR, "train_gmst.nc")  # Path to save/load precomputed annual GMST anomaly time series
-    val_gmst_path: str = os.path.join(CACHE_DIR, "val_gmst.nc")  # Path to save/load precomputed annual GMST anomaly time series
+    # train_experiments: tuple = ("piControl", "historical", "ssp126", "ssp585")  # Training experiments
+    train_experiments: dict = field(
+        default_factory=lambda: {
+            "piControl": ["r1i1p1f1"],
+            "ssp126": ["r1i1p1f1", "r2i1p1f1"]
+        }
+    ) # Training experiments
+    val_experiments: dict = field(
+        default_factory=lambda: {
+            "ssp245": ["r1i1p1f1", "r2i1p1f1"]
+        }
+    ) # Validation experiments
+    variables: tuple = ("tas", "pr", "hurs", "sfcWind")  # Climate variables
+    val_time_slice: tuple = ("2080-01", "2100-12")  # Time range for validation
+    train_gmst_path: str = os.path.join(CACHE_DIR, "gmsttrain.nc")  # Path to save/load precomputed annual GMST anomaly time series
+    val_gmst_path: str = os.path.join(CACHE_DIR, "gmstval.nc")  # Path to save/load precomputed annual GMST anomaly time series
     pattern_scaling_path: str = os.path.join(CACHE_DIR, "β.npy")  # Path to save/load pattern scaling coefficients
     norm_stats_path: str = os.path.join(CACHE_DIR, "μ_σ.npz")  # Path to save/load normalization statistics
     in_memory: bool = True  # Whether to load full dataset into memory
     norm_max_samples: int = 10000  # Maximum number of samples to use for normalization
     sigma_max_path: str = os.path.join(CACHE_DIR, "σmax.npy")  # Path to save/load σmax
-    sigma_max_search_interval: List[int] = (0, 200)  # Interval in which we search for sigma max
+    sigma_max_search_interval: tuple = (0, 200)  # Interval in which we search for sigma max
 
 
 @dataclass
@@ -93,7 +101,7 @@ class SamplingConfig:
     n_samples: int = 50  # Number of samples to generate per test point
     batch_size: int = 2  # Batch size for evaluation
     random_seed: int = 2100  # Seed for reproducibility
-    output_dir: str = f"/orcd/data/raffaele/001/shahineb/climemu/experiments/daily/{EXPERIMENT_NAME}/outputs"  # Output directory for inference
+    output_dir: str = f"/orcd/data/raffaele/001/shahineb/emulated/climemu/experiments/daily/{EXPERIMENT_NAME}/outputs"  # Output directory for inference
 
 @dataclass
 class Config:

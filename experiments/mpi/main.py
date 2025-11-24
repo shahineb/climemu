@@ -1,10 +1,10 @@
 import equinox as eqx
 
 from src.diffusion import HealPIXUNetDoY, ContinuousVESchedule
-from .config import Config
-from .data import load_dataset, compute_normalization, estimate_sigma_max
-from .trainer import train
-from .utils import load_or_compute_edges, print_parameter_count
+from experiments.mpi.config import Config
+from experiments.mpi.data import load_dataset, compute_normalization, estimate_sigma_max
+from experiments.mpi.trainer import train
+from experiments.mpi.utils import load_or_compute_edges, print_parameter_count
 
 
 
