@@ -109,7 +109,7 @@ class AmonCMIP6Data(Dataset):
         merged_experiments = dict()
         with tqdm(total=len(experiments), desc="Progress") as pbar:
             for e in experiments:
-                pbar.set_description(f"Building tree for {e}")
+                pbar.set_description(f"Building datatree for {e}")
                 ds_list = [self._load_xarray(e, var) for var in self.variables]
                 common_members = functools.reduce(np.intersect1d, [ds.member.values for ds in ds_list])
                 ds_list = [ds.sel(member=common_members) for ds in ds_list]
@@ -281,8 +281,10 @@ class DayCMIP6Data(Dataset):
         dataset = xr.open_zarr(store_dir,
                                decode_times=self.time_coder,
                                consolidated=True).unify_chunks()
+        dataset = dataset.drop_vars(["lat_bnds", "lon_bnds", "height", "dayofyear"], errors="ignore")
         if variable == "pr":
             dataset = dataset * SECONDS_PER_DAY
+            dataset["pr"].attrs["units"] = "mm/day"
         return dataset
     
     def _init_dtree(self, experiments: Dict, subset: Optional[Dict]):
@@ -292,9 +294,9 @@ class DayCMIP6Data(Dataset):
             for e, variants in experiments.items():
                 merged_variants = dict()
                 for ω in variants:
-                    pbar.set_description(f"Loading {e}, {ω}")
+                    pbar.set_description(f"Building datatree for {e}/{ω}")
                     ds_list = [self._load_zarr(e, v, ω) for v in self.variables]
-                    merged_variants[ω] = xr.merge(ds_list)
+                    merged_variants[ω] = xr.merge(ds_list, compat="override")
                     _ = pbar.update(1)
                 merged_experiments[e] = merged_variants
 
@@ -422,7 +424,7 @@ class DayCMIP6Data(Dataset):
 
 
 
-# # %%
+# %%
 # import os, sys
 # from functools import partial
 # base_dir = os.path.join(os.getcwd(), "../..")
@@ -435,7 +437,7 @@ class DayCMIP6Data(Dataset):
 # # %%
 # cmip6  = DayCMIP6Data(root="/home/shahineb/fs06/data/products/cmip6/processed",
 #                        model="MPI-ESM1-2-LR",
-#                        variables=["tas"],
+#                        variables=["tas", "pr", "hurs", "sfcWind"],
 #                        experiments={
 #                         #    "ssp126": ["r1i1p1f1", "r2i1p1f1", "r3i1p1f1"],
 #                            "ssp245": ["r1i1p1f1", "r2i1p1f1"]

@@ -13,15 +13,15 @@ from torch.utils.data import DataLoader, Subset
 
 
 
-# import sys
-# base_dir = os.path.join(os.getcwd(), '../..')
-# if base_dir not in sys.path:
-#     sys.path.append(base_dir)
+import sys
+base_dir = os.path.join(os.getcwd(), '../..')
+if base_dir not in sys.path:
+    sys.path.append(base_dir)
 from src.utils import arrays, trees
 from src.datasets import AmonCMIP6Data, DayCMIP6Data, PatternToDayCMIP6Data
 from src.utils.collate import numpy_collate
-from . import utils
-# from experiments.mpi import utils
+# from . import utils
+from experiments.mpi import utils
 
 
 
@@ -43,6 +43,7 @@ def compute_annual_gmst(
             return gmst, None
 
     # Load monthly temperature data
+    print("Loading monthly temperature data (for GMST computation)...")
     cmip6data = AmonCMIP6Data(root=root,
                               model=model,
                               experiments=experiments,
@@ -117,6 +118,7 @@ def load_dataset(
         # Compute and save new coefficients
         dataset = PatternToDayCMIP6Data(gmst, cmip6data)
         dataset.fit(["historical", "ssp585"], ensemble_mean_tas)
+        # dataset.fit(["ssp126"], ensemble_mean_tas)
         dataset.save_pattern_scaling(pattern_scaling_path)
         print(f"Saved pattern scaling coefficients to {pattern_scaling_path}")
     elif pattern_scaling_path:
@@ -306,15 +308,30 @@ def estimate_sigma_max(
     return σmax
 
 
+
+
 # # %%
 # dataset = load_dataset(
 #     root="/home/shahineb/fs06/data/products/cmip6/processed",
 #     model="MPI-ESM1-2-LR",
 #     experiments={"ssp126": ["r1i1p1f1", "r2i1p1f1"]},
-#     variables=["tas"],
+#     variables=["tas", "pr", "hurs", "sfcWind"],
 #     gmst_path="./gmst.nc",
 #     pattern_scaling_path="./β.npy",
 # )
+
+# # %%
+# from torch.utils.data import DataLoader
+
+# dummy_loader = DataLoader(
+#     dataset,
+#     batch_size=16,
+#     shuffle=True,
+#     collate_fn=numpy_collate
+# )
+
+# # %%
+# doy, pattern, samples = next(iter(dummy_loader))
 
 
 # # %%
