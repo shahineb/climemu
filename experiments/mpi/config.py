@@ -33,7 +33,8 @@ class DataConfig:
 
     Specifies dataset paths, climate model, experiments, and pattern scaling parameters.
     """
-    root_dir: str = "/orcd/data/raffaele/001/shahineb/products/cmip6/processed"  # CMIP6 data directory
+    # root_dir: str = "/orcd/data/raffaele/001/shahineb/products/cmip6/processed"  # CMIP6 data directory
+    root_dir: str = "/home/shahineb/fs06/data/products/cmip6/processed"
     model_name: str = "MPI-ESM1-2-LR"  # Climate model to use
     # train_experiments: tuple = ("piControl", "historical", "ssp126", "ssp585")  # Training experiments
     train_experiments: dict = field(
@@ -87,7 +88,7 @@ class ScheduleConfig:
 
     Defines the noise schedule parameters for the variance exploding schedule.
     """
-    sigma_max: float = None  # Maximum noise level, if None then estimated from training data
+    sigma_max: float = 200   # Maximum noise level, if None then estimated from training data
     sigma_min: float = 1e-2  # Minimum noise level
 
 

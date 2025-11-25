@@ -162,7 +162,8 @@ class HealPIXConvBlock(eqx.Module):
                                 dilation=dilation,
                                 use_bias=use_bias,
                                 key=key)
-        self.norm = eqx.nn.GroupNorm(groups=min(max(1, self.conv.conv.in_channels // 4), 32),
+        groups = min(max(1, in_channels // 4), 32) if in_channels % 4 == 0 else 1
+        self.norm = eqx.nn.GroupNorm(groups=groups,
                                      channels=self.conv.conv.in_channels,
                                      channelwise_affine=True) if norm else None
         self.dropout = eqx.nn.Dropout(p=dropout) if dropout > 0 else None

@@ -1,3 +1,4 @@
+# %%
 from typing import Optional, Union, Tuple, List
 import numpy as np
 import xarray as xr
@@ -6,9 +7,12 @@ from sklearn.linear_model import LinearRegression
 from torch.utils.data import Dataset
 from dask.diagnostics import ProgressBar
 from tqdm import tqdm
-from src.utils import arrays
-from src.datasets import AmonCMIP6Data, DayCMIP6Data
-# from .cmip6 import AmonCMIP6Data, DayCMIP6Data
+
+# import os, sys
+# sys.path.append(os.path.join(os.getcwd(), '../..'))
+# from src.utils import arrays
+# from src.datasets import AmonCMIP6Data, DayCMIP6Data
+from .cmip6 import AmonCMIP6Data, DayCMIP6Data
 
 
 
@@ -246,17 +250,17 @@ class PatternToDayCMIP6Data(Dataset):
         elif isinstance(idx, int):
             # Get the selected data slice
             cmip6_slice = self.cmip6data[idx]
-            year = cmip6_slice.time.dt.year.item()
-            doy = cmip6_slice.time.dt.dayofyear.item()
+            doy = cmip6_slice["doy"]
+            year = cmip6_slice["year"]
 
             # Get corresponding gmst
             leaf_idx, _ = self.cmip6data.indexmap(idx)
-            experiment = self.cmip6data.dtree.leaves[leaf_idx].parent.name
+            experiment = self.cmip6data.paths[leaf_idx].split('/')[0]
             gmst = self.gmst[experiment].sel(year=year).tas.item()
 
-            # Return pattern scaling and data array
+            # Compute pattern scaling and variables array
             pattern = self.predict_single_pattern(gmst)
-            cmip6_array = cmip6_slice[self.cmip6data.variables].to_array().values
+            cmip6_array = np.stack([cmip6_slice[v] for v in self.cmip6data.variables])
             return doy, pattern, cmip6_array
         else:
             raise ValueError(f"Invalid index type: {type(idx)}")
@@ -271,31 +275,28 @@ class PatternToDayCMIP6Data(Dataset):
     
 
 
-###
-import numpy as np
-gmst = xr.open_datatree("experiments/mpi/cache/gmsttrain.nc")
-cmip6  = DayCMIP6Data(root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
-                      model="MPI-ESM1-2-LR",
-                      variables=["tas", "pr", "hurs", "sfcWind"],
-                      experiments={
-                          "piControl": ["r1i1p1f1"],
-                          "ssp126": ["r1i1p1f1", "r2i1p1f1"]
-                      })
-β = np.load("experiments/mpi/cache/β.npy")
+# %%
+# import numpy as np
+# gmst = xr.open_datatree("../../experiments/mpi/cache/gmst.nc")
+# cmip6  = DayCMIP6Data(#root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
+#                       root="/home/shahineb/fs06/data/products/cmip6/processed",
+#                       model="MPI-ESM1-2-LR",
+#                       variables=["tas", "pr", "hurs", "sfcWind"],
+#                       experiments={
+#                           "piControl": ["r1i1p1f1"],
+#                           "ssp126": ["r1i1p1f1", "r2i1p1f1"]
+#                       })
+# β = np.load("../../experiments/mpi/cache/β.npy")
 
-dataset = PatternToDayCMIP6Data(gmst, cmip6, β)
+# dataset = PatternToDayCMIP6Data(gmst, cmip6, β)
 
 
-import time
-start = time.perf_counter()
-for i in range(100):
-    # Get the selected data slice
-    cmip6_slice = dataset.cmip6data[i]
-    # cmip6_array = cmip6_slice.to_array().values
-    cmip6_array = cmip6_slice['tas'].values
-    cmip6_array = cmip6_slice['pr'].values
-    cmip6_array = cmip6_slice['hurs'].values
-    cmip6_array = cmip6_slice['sfcWind'].values
-    # _ = dataset[i + 1]
-end = time.perf_counter()
-print(f"Elapsed time: {end - start:.4f} seconds")
+# %%
+#  %%
+# import time
+# start = time.perf_counter()
+# for i in range(100):
+#     doy, pattern, samples = dataset[i]
+# end = time.perf_counter()
+# print(f"Elapsed time: {end - start:.4f} seconds")
+# # %%

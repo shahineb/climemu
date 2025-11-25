@@ -8,13 +8,12 @@ import jax.random as jr
 import equinox as eqx
 import optax
 from tqdm import tqdm
-from torch.utils.data import DataLoader
 import wandb
 
-from src.utils.collate import numpy_collate
 from src.diffusion import denoising_make_step_doy, denoising_batch_loss_doy
 from src.datasets import PatternToDayCMIP6Data
 from paper.mpi.config import Config
+from .data import make_dataloader
 from . import utils
 
 
@@ -39,8 +38,8 @@ class TrainingState:
 
 def train_epoch(
     state: TrainingState,
-    train_loader: DataLoader,
-    val_loader: DataLoader,
+    train_loader: object,
+    val_loader: object,
     schedule: object,
     μ: jnp.ndarray,
     σ: jnp.ndarray,
@@ -121,21 +120,21 @@ def train_epoch(
                 utils.log_samples(pred_samples, log_target_data, config.data.variables, state.step)
 
     # Validation phase
-    val_loss = 0
-    with tqdm(total=n_val_steps, desc="Evaluation") as pbar:        
-        for batch_idx, batch in enumerate(val_loader):
-            # Process batch and compute validation loss
-            doy, x = utils.process_batch(batch, μ, σ)
-            val_value = denoising_batch_loss_doy(
-                state.ema_model, config.model.context_channels, schedule, x, doy, χval
-            )
-            val_loss += val_value.item()
-            # Update progress bar
-            pbar.set_description(f"Epoch {state.epoch + 1} | Val {round(val_loss / (batch_idx + 1), 2)}")
-            pbar.update(1)
+    # val_loss = 0
+    # with tqdm(total=n_val_steps, desc="Evaluation") as pbar:        
+    #     for batch_idx, batch in enumerate(val_loader):
+    #         # Process batch and compute validation loss
+    #         doy, x = utils.process_batch(batch, μ, σ)
+    #         val_value = denoising_batch_loss_doy(
+    #             state.ema_model, config.model.context_channels, schedule, x, doy, χval
+    #         )
+    #         val_loss += val_value.item()
+    #         # Update progress bar
+    #         pbar.set_description(f"Epoch {state.epoch + 1} | Val {round(val_loss / (batch_idx + 1), 2)}")
+    #         pbar.update(1)
 
     # Log validation loss
-    wandb.log({"Validation Loss": val_loss / n_val_steps}, step=state.step)
+    # wandb.log({"Validation Loss": val_loss / n_val_steps}, step=state.step)
 
     # Checkpoint weights
     if (state.epoch + 1) % config.training.checkpoint_interval == 0:
@@ -180,21 +179,18 @@ def train(
     state = TrainingState(model, ema_model, opt_state)
 
     # Create data loaders with numpy collate function
-    train_loader = DataLoader(
+    train_loader = make_dataloader(
         train_dataset,
-        batch_size=config.training.batch_size, 
-        shuffle=True,
-        collate_fn=numpy_collate
+        batch_size=config.training.batch_size
     )
 
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=config.training.batch_size,
-        collate_fn=numpy_collate
-    )
+    # val_loader = make_dataloader(
+    #     val_dataset,
+    #     batch_size=config.training.batch_size
+    # )
 
     # Get a single batch used visualization and metrics logging
-    lod_doy, log_pattern, log_target_data = utils.get_sample_batch(
+    log_doy, log_pattern, log_target_data = utils.get_sample_batch(
         dataset=train_dataset,
         batch_size=16,
         key=jr.PRNGKey(config.training.random_seed)
@@ -202,7 +198,7 @@ def train(
     log_sampler = partial(
         utils.draw_samples_batch,
         schedule=schedule,
-        doy_batch=lod_doy,
+        doy_batch=log_doy,
         pattern_batch=log_pattern,
         n_samples=config.training.sample_count,
         n_steps=config.training.sample_steps,
@@ -220,7 +216,7 @@ def train(
     # Training loop - iterate through epochs
     for _ in range(config.training.epochs):
         state = train_epoch(
-            state, train_loader, val_loader, schedule,
+            state, train_loader, None, schedule,
             μ, σ, log_sampler, log_target_data, config, optimizer
         )
     

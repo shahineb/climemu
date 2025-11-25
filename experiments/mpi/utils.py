@@ -9,11 +9,11 @@ import jax.random as jr
 import wandb
 import equinox as eqx
 from tqdm import tqdm
-from torch.utils.data import DataLoader, Subset
-from src.utils.collate import numpy_collate
+from torch.utils.data import Subset
 
 from src.diffusion import ContinuousHeunSampler
 from src.utils.graphs import compute_latlon_to_healpix_edges
+from .data import make_dataloader
 
 
 ################################################################################
@@ -88,7 +88,7 @@ def estimate_power(dataset, σmax, α, n_montecarlo, npool, μ, σ, ctx_size, ke
     indices = jr.permutation(key, dataset_size)[:n_montecarlo].tolist()
     rejections = 0
     dataset_subset = Subset(dataset, indices)
-    dummy_loader = DataLoader(dataset_subset, batch_size=1, shuffle=True, collate_fn=numpy_collate)
+    dummy_loader = make_dataloader(dataset_subset, batch_size=1, shuffle=True)
 
     # Estimate power on this subset
     rejections = 0
@@ -287,7 +287,7 @@ def get_sample_batch(dataset, batch_size, key):
     subset = Subset(dataset, indices.tolist())
     
     # Create a dataloader for the subset
-    loader = DataLoader(subset, batch_size=batch_size, shuffle=True, collate_fn=numpy_collate)
+    loader = make_dataloader(subset, batch_size=batch_size)
     
     # Get the first batch
     batch = next(iter(loader))

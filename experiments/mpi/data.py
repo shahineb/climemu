@@ -1,16 +1,18 @@
+# %%
 import os
 from typing import Dict, List, Optional, Tuple, Any
 
-import numpy as np
 import xarray as xr
+import numpy as np
 import jax.numpy as jnp
 import jax.random as jr
 from dask.diagnostics import ProgressBar
+from torch.utils.data import Subset
 
 from functools import partial
+import queue
+import threading
 from tqdm import tqdm
-from torch.utils.data import DataLoader, Subset
-
 
 
 # import sys
@@ -19,11 +21,134 @@ from torch.utils.data import DataLoader, Subset
 #     sys.path.append(base_dir)
 from src.utils import arrays, trees
 from src.datasets import AmonCMIP6Data, DayCMIP6Data, PatternToDayCMIP6Data
-from src.utils.collate import numpy_collate
 from . import utils
 # from experiments.mpi import utils
 
 
+def jax_collate(batch):
+    doys     = jnp.array([int(item[0]) for item in batch])          # (B,)
+    patterns = jnp.stack([jnp.asarray(item[1]) for item in batch])  # (B, H, W)
+    arrays   = jnp.stack([jnp.asarray(item[2]) for item in batch])  # (B, C, H, W)
+    return doys, patterns, arrays
+
+
+SENTINEL = object()
+
+
+class JaxDataLoader:
+    def __init__(
+        self,
+        dataset,
+        batch_size,
+        shuffle=True,
+        collate_fn=None,
+        num_workers=4,
+        prefetch=8,
+        seed=0,
+    ):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.collate_fn = collate_fn
+        self.num_workers = num_workers
+        self.prefetch = prefetch
+        self.seed = seed
+
+        self.q = queue.Queue(maxsize=prefetch)
+        self._stop = threading.Event()
+        self._started = False
+
+    def _start_workers(self):
+        if self._started:
+            return
+        self._started = True
+
+        self.workers = []
+        for wid in range(self.num_workers):
+            t = threading.Thread(
+                target=self._worker_loop,
+                args=(wid,),
+                daemon=True,
+            )
+            t.start()
+            self.workers.append(t)
+
+    def _worker_loop(self, wid):
+        rng = np.random.default_rng(self.seed + wid)
+        n = len(self.dataset)
+
+        # Create one permutation per worker
+        idx = np.arange(n)
+        if self.shuffle:
+            rng.shuffle(idx)
+
+        # Worker processes every num_workers-th batch
+        # Example: worker 0 → batches 0, W, 2W, ...
+        for start in range(wid * self.batch_size,
+                           n,
+                           self.batch_size * self.num_workers):
+
+            if self._stop.is_set():
+                return
+
+            bidx = idx[start:start + self.batch_size]
+            if len(bidx) == 0:
+                continue
+
+            batch = [self.dataset[int(i)] for i in bidx]
+            if self.collate_fn:
+                batch = self.collate_fn(batch)
+
+            self.q.put(batch)
+
+        # When this worker is done, push sentinel
+        self.q.put(SENTINEL)
+
+    def __iter__(self):
+        self._start_workers()
+        self.finished_workers = 0
+        return self
+
+    def __next__(self):
+        item = self.q.get()
+
+        if item is SENTINEL:
+            # One worker finished
+            self.finished_workers += 1
+
+            if self.finished_workers == self.num_workers:
+                # All workers done: stop iteration
+                self.close()
+                raise StopIteration
+
+            # Otherwise continue consuming
+            return self.__next__()
+
+        return item
+    
+    def __len__(self):
+        N = len(self.dataset)
+        B = self.batch_size
+        n_iter = N // B + (1 if N % B != 0 else 0)
+        return n_iter
+
+    def close(self):
+        self._stop.set()
+        for w in self.workers:
+            w.join(timeout=1)
+
+
+
+def make_dataloader(dataset, batch_size, shuffle=True, num_workers=32, prefetch=64, seed=0):
+    return JaxDataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        collate_fn=jax_collate,
+        num_workers=num_workers,
+        prefetch=prefetch,
+        seed=seed,
+    )
 
 def compute_annual_gmst(
     root: str,
@@ -38,7 +163,7 @@ def compute_annual_gmst(
             os.remove(gmst_path)
         else:
             print(f"Loading gmst time series from {gmst_path}")
-            gmst = xr.open_datatree(gmst_path)
+            gmst = xr.open_datatree(gmst_path).load()
             assert set(experiments) <= set(gmst.keys()), "GMST is missing some requested experiments, need to recompute."
             return gmst, None
 
@@ -70,7 +195,6 @@ def load_dataset(
     model: str,
     experiments: Dict[str, List[str]],
     variables: List[str],
-    subset: Optional[Dict[str, Any]] = None,
     gmst_path: Optional[str] = None,
     pattern_scaling_path: Optional[str] = None,
     external_β: Optional[jnp.ndarray] = None
@@ -98,8 +222,6 @@ def load_dataset(
         "experiments": experiments,
         "variables": variables
     }
-    if subset:
-        cmip6_kwargs["subset"] = subset
 
     # Create CMIP6 data instance
     cmip6data = DayCMIP6Data(**cmip6_kwargs)
@@ -184,11 +306,10 @@ def compute_normalization(
     dataset_subset = Subset(piControl_dataset, indices)
     
     # Create a dataloader for the subset
-    dummy_loader = DataLoader(
-        dataset_subset, 
+    dummy_loader = make_dataloader(
+        dataset_subset,
         batch_size=batch_size, 
-        shuffle=False,
-        collate_fn=numpy_collate
+        shuffle=False
     )
     
     # Process each batch and collect results
@@ -311,17 +432,258 @@ def estimate_sigma_max(
 
 
 
-######
-
+# # %%
 # dataset = load_dataset(
-#     root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
+#     # root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
+#     root="/home/shahineb/fs06/data/products/cmip6/processed",
 #     model="MPI-ESM1-2-LR",
-#     experiments={"ssp126": ["r1i1p1f1", "r2i1p1f1"]},
+#     experiments={"piControl": ["r1i1p1f1"],
+#                  "historical": ["r1i1p1f1"],
+#                  "ssp126": ["r1i1p1f1", "r2i1p1f1"]},
 #     variables=["tas", "pr", "hurs", "sfcWind"],
-#     gmst_path="./gmst.nc",
-#     pattern_scaling_path="./β.npy",
+#     gmst_path="../../experiments/mpi/cache/gmsttrain.nc",
+#     pattern_scaling_path="../../experiments/mpi/cache/β.npy",
 # )
 
+
+# # %%
+# dummy_loader = make_dataloader(dataset,
+#                              batch_size=16,
+#                              seed=59)
+
+
+# # %%
+# doy, pattern, samples = next(iter(dummy_loader))
+
+
+# # %%
+# # Keep only piControl data
+# piControldata = DayCMIP6Data(root=dataset.cmip6data.root,
+#                                 model=dataset.cmip6data.model,
+#                                 experiments={"piControl": ["r1i1p1f1"]},
+#                                 variables=dataset.cmip6data.variables)
+
+# piControl_dataset = PatternToDayCMIP6Data(cmip6data=piControldata,
+#                                             gmst=trees.filter_datatree(dataset.gmst, ["piControl"]),
+#                                             β=dataset.β)
+
+# # %%
+# μ, σ = compute_normalization(
+#     dataset=dataset,
+#     batch_size=16,
+#     max_samples=1000,
+#     norm_stats_path="./norm_stats.npz",
+# )
+
+
+# # %%
+
+
+# # %%
+# # Create a random subset of the dataset
+# dataset_size = len(piControl_dataset)
+# subset_size = min(10000, dataset_size)
+
+# # Generate random indices
+# key = jr.PRNGKey(42)
+# indices = jr.permutation(key, dataset_size)[:subset_size].tolist()
+# dataset_subset = Subset(piControl_dataset, indices)
+
+# # Create a dataloader for the subset
+# dummy_loader = make_dataloader(
+#     dataset_subset,
+#     batch_size=16, 
+#     shuffle=False
+# )
+
+# # %%
+# for batch in tqdm(dummy_loader):
+#     doy, pattern, samples = batch
+
+
+# # %%
+# σmax = estimate_sigma_max(
+#     dataset=dataset,
+#     μ=μ,
+#     σ=σ,
+#     ctx_size=1,
+#     search_interval=[1, 200],
+#     sigma_max_path="./sigma_max.npy",
+# )
+
+# %%
+
+
+# # %%
+# import time
+# i = 0
+# start = time.perf_counter()
+# for batch in tqdm(dummy_loader, total=100):
+#     doy, pattern, samples = batch
+#     i += 1
+#     time.sleep(0.2)
+#     if i >= 100:
+#         break
+# end = time.perf_counter()
+# print(f"Elapsed time: {end - start:.4f} seconds")
+
+# # %%
+# import jax
+# import time
+
+# def jax_collate(batch):
+#     doys     = jnp.array([int(item[0]) for item in batch])          # (B,)
+#     patterns = jnp.stack([jnp.asarray(item[1]) for item in batch])  # (B, H, W)
+#     arrays   = jnp.stack([jnp.asarray(item[2]) for item in batch])  # (B, C, H, W)
+#     return doys, patterns, arrays
+
+# def data_generator(dataset, batch_size, shuffle=True, seed=0):
+#     n = len(dataset)
+#     rng = np.random.default_rng(seed)
+#     while True:
+#         idx = np.arange(n)
+#         rng.shuffle(idx) if shuffle else None
+#         for start in range(0, n, batch_size):
+#             bidx = idx[start:start+batch_size]
+#             batch = [dataset[i.item()] for i in bidx]
+#             yield jax_collate(batch)
+
+# import queue
+# import threading
+
+# class JaxDataLoader:
+#     def __init__(
+#         self,
+#         dataset,
+#         batch_size,
+#         shuffle=True,
+#         collate_fn=None,
+#         prefetch=8,
+#         num_workers=4,
+#         seed=0,
+#     ):
+#         self.dataset = dataset
+#         self.batch_size = batch_size
+#         self.shuffle = shuffle
+#         self.collate_fn = collate_fn
+#         self.prefetch = prefetch
+#         self.num_workers = num_workers
+#         self.seed = seed
+
+#         # Shared queue
+#         self.q = queue.Queue(maxsize=prefetch)
+
+#         # Worker stop flag
+#         self._stop = threading.Event()
+
+#         # Start workers
+#         self.workers = []
+#         for wid in range(num_workers):
+#             worker = threading.Thread(
+#                 target=self._worker_loop,
+#                 args=(wid,),
+#                 daemon=True,
+#             )
+#             worker.start()
+#             self.workers.append(worker)
+
+#     def _worker_loop(self, worker_id):
+#         rng = np.random.default_rng(self.seed + worker_id)
+#         n = len(self.dataset)
+
+#         while not self._stop.is_set():
+#             idx = np.arange(n)
+#             if self.shuffle:
+#                 rng.shuffle(idx)
+
+#             # Iterate batches assigned to this worker
+#             # Each worker handles a stride: worker_id, worker_id+num_workers, ...
+#             for start in range(worker_id * self.batch_size,
+#                                n,
+#                                self.batch_size * self.num_workers):
+
+#                 if self._stop.is_set():
+#                     return
+
+#                 bidx = idx[start:start + self.batch_size]
+#                 if len(bidx) == 0:
+#                     continue
+
+#                 batch = [self.dataset[int(i)] for i in bidx]
+
+#                 if self.collate_fn:
+#                     batch = self.collate_fn(batch)
+
+#                 # Will block if queue full → natural backpressure
+#                 self.q.put(batch)
+
+#     def __iter__(self):
+#         return self
+
+#     def __next__(self):
+#         if self._stop.is_set():
+#             raise StopIteration
+#         return self.q.get()
+
+#     def close(self):
+#         self._stop.set()
+#         for w in self.workers:
+#             w.join(timeout=1)
+
+# # %%
+# dummy_loader = JaxDataLoader(dataset,
+#                              batch_size=16,
+#                              collate_fn=jax_collate,
+#                              num_workers=1,
+#                              prefetch=0,
+#                              shuffle=True,
+#                              seed=57)
+# i = 0
+# start = time.perf_counter()
+# for batch in tqdm(dummy_loader, total=100):
+#     doy, pattern, samples = batch
+#     i += 1
+#     time.sleep(0.5)
+#     if i >= 100:
+#         break
+# end = time.perf_counter()
+# print(f"Elapsed time: {end - start:.4f} seconds")
+
+
+# # %%
+# from torch.utils.data import DataLoader
+# dummy_loader = DataLoader(
+#     dataset,
+#     batch_size=16,
+#     shuffle=True,
+#     collate_fn=numpy_collate
+# )
+
+# # %%
+# i = 0
+# start = time.perf_counter()
+# for batch in tqdm(dummy_loader, total=100):
+#     doy, pattern, samples = batch
+#     i += 1
+#     time.sleep(0.5)
+#     if i >= 100:
+#         break
+# end = time.perf_counter()
+# print(f"Elapsed time: {end - start:.4f} seconds")
+
+
+
+# # %%
+# import time
+# start = time.perf_counter()
+# idx = np.random.default_rng(45).permutation(len(dataset))[:200]
+# for i in idx:
+#     foo = dataset.cmip6data[i.item()]
+# end = time.perf_counter()
+# print(f"Elapsed time: {end - start:.4f} seconds")
+
+
+# # %%
 
 
 # # %%
