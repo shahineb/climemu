@@ -6,7 +6,7 @@ import numpy as np
 import xarray as xr
 from torch.utils.data import Dataset
 from dask.diagnostics import ProgressBar
-from .constants import SECONDS_PER_DAY
+# from .constants import SECONDS_PER_DAY
 
 
 class AmonCMIP6Data(Dataset):
@@ -279,7 +279,7 @@ class DayCMIP6Data(Dataset):
             raise FileNotFoundError(f"No files found for {variable} in {experiment}, {variant}")
         
         dataset = xr.open_zarr(store_dir,
-                               decode_times=self.time_coder,
+                               decode_times=False,
                                consolidated=True).unify_chunks()
         dataset = dataset.drop_vars(["lat_bnds", "lon_bnds", "height", "dayofyear"], errors="ignore")
         if variable == "pr":
@@ -424,7 +424,6 @@ class DayCMIP6Data(Dataset):
 
 
 
-# %%
 # import os, sys
 # from functools import partial
 # base_dir = os.path.join(os.getcwd(), "../..")
@@ -432,13 +431,55 @@ class DayCMIP6Data(Dataset):
 #     sys.path.append(base_dir)
 # from src.utils import arrays
 
+# SECONDS_PER_DAY = 86400
 
 
-# # %%
-# cmip6  = DayCMIP6Data(root="/home/shahineb/fs06/data/products/cmip6/processed",
+# cmip6  = DayCMIP6Data(
+#     # root="/home/shahineb/fs06/data/products/cmip6/processed",
+#                       root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
 #                        model="MPI-ESM1-2-LR",
 #                        variables=["tas", "pr", "hurs", "sfcWind"],
 #                        experiments={
-#                         #    "ssp126": ["r1i1p1f1", "r2i1p1f1", "r3i1p1f1"],
-#                            "ssp245": ["r1i1p1f1", "r2i1p1f1"]
+#                            "ssp126": ["r1i1p1f1", "r2i1p1f1", "r3i1p1f1"],
+#                         #    "ssp245": ["r1i1p1f1", "r2i1p1f1"]
 #                        })
+
+# cmip6  = DayCMIP6Data(root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
+#                       model="MPI-ESM1-2-LR",
+#                       variables=["tas", "pr", "hurs", "sfcWind"],
+#                       experiments={
+#                           "piControl": ["r1i1p1f1"],
+#                           "ssp126": ["r1i1p1f1", "r2i1p1f1"]
+#                       })
+
+
+# import time
+# start = time.perf_counter()
+# for i in range(100):
+#     _ = cmip6[i + 1].to_array().values
+# end = time.perf_counter()
+# print(f"Elapsed time: {end - start:.4f} seconds")
+
+
+# import xarray as xr
+# import zarr
+
+
+# filepath = "/orcd/home/002/shahineb/data/products/cmip6/processed/MPI-ESM1-2-LR/piControl/r1i1p1f1/tas_anomaly/day/tas_day_MPI-ESM1-2-LR_piControl_r1i1p1f1_daily_anomaly.zarr"
+# ds_xr = xr.open_zarr(filepath, consolidated=True, decode_times=False)
+# ds_zarr = zarr.open_consolidated(filepath, mode='r')
+
+
+# start = time.perf_counter()
+# for i in range(100):
+#     _ = ds_xr["tas"].isel(time=i).values
+# end = time.perf_counter()
+# print(f"Elapsed time: {end - start:.4f} seconds")  # Elapsed time: 12.3002 seconds
+
+
+
+# start = time.perf_counter()
+# for i in range(100):
+#     _ = ds_zarr["tas"][i, :, :]
+# end = time.perf_counter()
+# print(f"Elapsed time: {end - start:.4f} seconds")  # Elapsed time: 0.0478 seconds

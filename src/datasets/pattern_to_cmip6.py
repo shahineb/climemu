@@ -7,7 +7,8 @@ from torch.utils.data import Dataset
 from dask.diagnostics import ProgressBar
 from tqdm import tqdm
 from src.utils import arrays
-from .cmip6 import AmonCMIP6Data, DayCMIP6Data
+from src.datasets import AmonCMIP6Data, DayCMIP6Data
+# from .cmip6 import AmonCMIP6Data, DayCMIP6Data
 
 
 
@@ -267,3 +268,34 @@ class PatternToDayCMIP6Data(Dataset):
             str: String representation.
         """
         return f"PatternScalingtoDayCMIP6Data(\n gmst={self.gmst}, \n cmip6data={self.cmip6data}\n)"
+    
+
+
+###
+import numpy as np
+gmst = xr.open_datatree("experiments/mpi/cache/gmsttrain.nc")
+cmip6  = DayCMIP6Data(root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
+                      model="MPI-ESM1-2-LR",
+                      variables=["tas", "pr", "hurs", "sfcWind"],
+                      experiments={
+                          "piControl": ["r1i1p1f1"],
+                          "ssp126": ["r1i1p1f1", "r2i1p1f1"]
+                      })
+β = np.load("experiments/mpi/cache/β.npy")
+
+dataset = PatternToDayCMIP6Data(gmst, cmip6, β)
+
+
+import time
+start = time.perf_counter()
+for i in range(100):
+    # Get the selected data slice
+    cmip6_slice = dataset.cmip6data[i]
+    # cmip6_array = cmip6_slice.to_array().values
+    cmip6_array = cmip6_slice['tas'].values
+    cmip6_array = cmip6_slice['pr'].values
+    cmip6_array = cmip6_slice['hurs'].values
+    cmip6_array = cmip6_slice['sfcWind'].values
+    # _ = dataset[i + 1]
+end = time.perf_counter()
+print(f"Elapsed time: {end - start:.4f} seconds")
