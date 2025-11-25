@@ -9,12 +9,142 @@ import jax.random as jr
 import wandb
 import equinox as eqx
 from tqdm import tqdm
+import queue
+import threading
 from torch.utils.data import Subset
 
 from src.diffusion import ContinuousHeunSampler
 from src.utils.graphs import compute_latlon_to_healpix_edges
-from .data import make_dataloader
 
+
+################################################################################
+#                               DATALOADER                                     #
+################################################################################
+
+def jax_collate(batch):
+    doys     = jnp.array([int(item[0]) for item in batch])          # (B,)
+    patterns = jnp.stack([jnp.asarray(item[1]) for item in batch])  # (B, H, W)
+    arrays   = jnp.stack([jnp.asarray(item[2]) for item in batch])  # (B, C, H, W)
+    return doys, patterns, arrays
+
+
+SENTINEL = object()
+
+
+class JaxDataLoader:
+    def __init__(
+        self,
+        dataset,
+        batch_size,
+        shuffle=True,
+        collate_fn=None,
+        num_workers=4,
+        prefetch=8,
+        seed=0,
+    ):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.collate_fn = collate_fn
+        self.num_workers = num_workers
+        self.prefetch = prefetch
+        self.seed = seed
+
+        self.q = queue.Queue(maxsize=prefetch)
+        self._stop = threading.Event()
+        self._started = False
+
+    def _start_workers(self):
+        if self._started:
+            return
+        self._started = True
+
+        self.workers = []
+        for wid in range(self.num_workers):
+            t = threading.Thread(
+                target=self._worker_loop,
+                args=(wid,),
+                daemon=True,
+            )
+            t.start()
+            self.workers.append(t)
+
+    def _worker_loop(self, wid):
+        rng = np.random.default_rng(self.seed + wid)
+        n = len(self.dataset)
+
+        # Create one permutation per worker
+        idx = np.arange(n)
+        if self.shuffle:
+            rng.shuffle(idx)
+
+        # Worker processes every num_workers-th batch
+        # Example: worker 0 → batches 0, W, 2W, ...
+        for start in range(wid * self.batch_size,
+                           n,
+                           self.batch_size * self.num_workers):
+
+            if self._stop.is_set():
+                return
+
+            bidx = idx[start:start + self.batch_size]
+            if len(bidx) == 0:
+                continue
+
+            batch = [self.dataset[int(i)] for i in bidx]
+            if self.collate_fn:
+                batch = self.collate_fn(batch)
+
+            self.q.put(batch)
+
+        # When this worker is done, push sentinel
+        self.q.put(SENTINEL)
+
+    def __iter__(self):
+        self._start_workers()
+        self.finished_workers = 0
+        return self
+
+    def __next__(self):
+        item = self.q.get()
+
+        if item is SENTINEL:
+            # One worker finished
+            self.finished_workers += 1
+
+            if self.finished_workers == self.num_workers:
+                # All workers done: stop iteration
+                self.close()
+                raise StopIteration
+
+            # Otherwise continue consuming
+            return self.__next__()
+
+        return item
+    
+    def __len__(self):
+        N = len(self.dataset)
+        B = self.batch_size
+        n_iter = N // B + (1 if N % B != 0 else 0)
+        return n_iter
+
+    def close(self):
+        self._stop.set()
+        for w in self.workers:
+            w.join(timeout=1)
+
+
+
+def make_dataloader(dataset, batch_size, shuffle=True, num_workers=32, prefetch=64, seed=0):
+    return JaxDataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        collate_fn=jax_collate,
+        num_workers=num_workers,
+        prefetch=prefetch,
+        seed=seed,
+    )
 
 ################################################################################
 #                               HEALPIX-LATLON EDGES                           #
@@ -241,10 +371,14 @@ def create_wandb_image(data: jnp.ndarray, flip: bool = True) -> wandb.Image:
     return wandb.Image(normalize_for_viz(data))
 
 
-def log_initial_context(context: jnp.ndarray) -> None:
+def log_initial_context(context: jnp.ndarray, doy_emb: jnp.ndarray, doy: int) -> None:
     """Log initial context to wandb."""
     tas_context = create_wandb_image(context[0])
-    wandb.log({"condition": tas_context}, step=0)
+    wandb.log({"condition/pattern": tas_context}, step=0)
+    data = [[i, val] for i, val in enumerate(np.asarray(doy_emb))]
+    table = wandb.Table(data=data, columns=["index", "value"])
+    wandb.log({"condition/doy_emb": wandb.plot.bar(table, "index", "value")})
+    wandb.log({"condition/doy": int(doy)})
 
 
 def log_samples(pred_samples: jnp.ndarray, target_data: jnp.ndarray, 

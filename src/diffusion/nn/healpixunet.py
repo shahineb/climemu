@@ -621,17 +621,13 @@ class HealPIXUNetDoY(HealPIXUNet):
 
     def __call__(self, x: jax.Array, doy: jax.Array, t: jax.Array) -> jax.Array:
         # Map to healpix
-        print("x", x.shape)
         c, nlat, nlon = x.shape
         x = self.to_healpix(x.reshape(c, -1))
-        print("x", x.shape)
 
         # DoY embedding
         doy_emb = self.doy_embedding(doy)
         doy_emb = jnp.broadcast_to(doy_emb[:, None], (doy_emb.shape[0], x.shape[1]))
-        print("doy", doy.shape)
         x = jnp.concatenate([x, doy_emb], axis=0)
-        print("x", x.shape)
 
         # Time embedding
         temb = self.embedding(t)

@@ -10,8 +10,6 @@ from dask.diagnostics import ProgressBar
 from torch.utils.data import Subset
 
 from functools import partial
-import queue
-import threading
 from tqdm import tqdm
 
 
@@ -25,130 +23,6 @@ from . import utils
 # from experiments.mpi import utils
 
 
-def jax_collate(batch):
-    doys     = jnp.array([int(item[0]) for item in batch])          # (B,)
-    patterns = jnp.stack([jnp.asarray(item[1]) for item in batch])  # (B, H, W)
-    arrays   = jnp.stack([jnp.asarray(item[2]) for item in batch])  # (B, C, H, W)
-    return doys, patterns, arrays
-
-
-SENTINEL = object()
-
-
-class JaxDataLoader:
-    def __init__(
-        self,
-        dataset,
-        batch_size,
-        shuffle=True,
-        collate_fn=None,
-        num_workers=4,
-        prefetch=8,
-        seed=0,
-    ):
-        self.dataset = dataset
-        self.batch_size = batch_size
-        self.shuffle = shuffle
-        self.collate_fn = collate_fn
-        self.num_workers = num_workers
-        self.prefetch = prefetch
-        self.seed = seed
-
-        self.q = queue.Queue(maxsize=prefetch)
-        self._stop = threading.Event()
-        self._started = False
-
-    def _start_workers(self):
-        if self._started:
-            return
-        self._started = True
-
-        self.workers = []
-        for wid in range(self.num_workers):
-            t = threading.Thread(
-                target=self._worker_loop,
-                args=(wid,),
-                daemon=True,
-            )
-            t.start()
-            self.workers.append(t)
-
-    def _worker_loop(self, wid):
-        rng = np.random.default_rng(self.seed + wid)
-        n = len(self.dataset)
-
-        # Create one permutation per worker
-        idx = np.arange(n)
-        if self.shuffle:
-            rng.shuffle(idx)
-
-        # Worker processes every num_workers-th batch
-        # Example: worker 0 → batches 0, W, 2W, ...
-        for start in range(wid * self.batch_size,
-                           n,
-                           self.batch_size * self.num_workers):
-
-            if self._stop.is_set():
-                return
-
-            bidx = idx[start:start + self.batch_size]
-            if len(bidx) == 0:
-                continue
-
-            batch = [self.dataset[int(i)] for i in bidx]
-            if self.collate_fn:
-                batch = self.collate_fn(batch)
-
-            self.q.put(batch)
-
-        # When this worker is done, push sentinel
-        self.q.put(SENTINEL)
-
-    def __iter__(self):
-        self._start_workers()
-        self.finished_workers = 0
-        return self
-
-    def __next__(self):
-        item = self.q.get()
-
-        if item is SENTINEL:
-            # One worker finished
-            self.finished_workers += 1
-
-            if self.finished_workers == self.num_workers:
-                # All workers done: stop iteration
-                self.close()
-                raise StopIteration
-
-            # Otherwise continue consuming
-            return self.__next__()
-
-        return item
-    
-    def __len__(self):
-        N = len(self.dataset)
-        B = self.batch_size
-        n_iter = N // B + (1 if N % B != 0 else 0)
-        return n_iter
-
-    def close(self):
-        self._stop.set()
-        for w in self.workers:
-            w.join(timeout=1)
-
-
-
-def make_dataloader(dataset, batch_size, shuffle=True, num_workers=32, prefetch=64, seed=0):
-    return JaxDataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        collate_fn=jax_collate,
-        num_workers=num_workers,
-        prefetch=prefetch,
-        seed=seed,
-    )
 
 def compute_annual_gmst(
     root: str,
@@ -239,8 +113,7 @@ def load_dataset(
     elif pattern_scaling_path and not os.path.exists(pattern_scaling_path):
         # Compute and save new coefficients
         dataset = PatternToDayCMIP6Data(gmst, cmip6data)
-        # dataset.fit(["historical", "ssp585"], ensemble_mean_tas)
-        dataset.fit(["ssp126"], ensemble_mean_tas)
+        dataset.fit(["historical", "ssp585"], ensemble_mean_tas)
         dataset.save_pattern_scaling(pattern_scaling_path)
         print(f"Saved pattern scaling coefficients to {pattern_scaling_path}")
     elif pattern_scaling_path:
@@ -306,7 +179,7 @@ def compute_normalization(
     dataset_subset = Subset(piControl_dataset, indices)
     
     # Create a dataloader for the subset
-    dummy_loader = make_dataloader(
+    dummy_loader = utils.make_dataloader(
         dataset_subset,
         batch_size=batch_size, 
         shuffle=False
@@ -447,7 +320,7 @@ def estimate_sigma_max(
 
 
 # # %%
-# dummy_loader = make_dataloader(dataset,
+# dummy_loader = utils.make_dataloader(dataset,
 #                              batch_size=16,
 #                              seed=59)
 
@@ -490,7 +363,7 @@ def estimate_sigma_max(
 # dataset_subset = Subset(piControl_dataset, indices)
 
 # # Create a dataloader for the subset
-# dummy_loader = make_dataloader(
+# dummy_loader = utils.make_dataloader(
 #     dataset_subset,
 #     batch_size=16, 
 #     shuffle=False

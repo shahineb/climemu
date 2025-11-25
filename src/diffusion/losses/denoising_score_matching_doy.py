@@ -11,7 +11,7 @@ from functools import partial
 
 
 @eqx.filter_jit
-def denoising_single_loss(model, ctx_size, x, doy, σ, key):
+def denoising_single_loss_doy(model, ctx_size, x, doy, σ, key):
     """
     Computes the denoising score matching loss for a single sample.
 
@@ -64,7 +64,7 @@ def denoising_batch_loss_doy(model, ctx_size, schedule, x, doy, key):
     χ1, χ2 = jr.split(key)
 
     # Vectorize single-sample loss over batc
-    L = jax.vmap(partial(denoising_single_loss, model, ctx_size))
+    L = jax.vmap(partial(denoising_single_loss_doy, model, ctx_size))
 
     # Sample noise scales for each batch element
     keys = jr.split(χ1, batch_size)
@@ -98,7 +98,7 @@ def denoising_make_step_doy(model, ctx_size, schedule, x, doy, key, opt_state, o
         grad_norm: Norm of the gradients.
     """
     # Compute loss and gradients with respect to model parameters
-    loss_function = eqx.filter_value_and_grad(denoising_batch_loss)
+    loss_function = eqx.filter_value_and_grad(denoising_batch_loss_doy)
     loss, grads = loss_function(model, ctx_size, schedule, x, doy, key)
 
     # Compute gradient norm (for loggin)

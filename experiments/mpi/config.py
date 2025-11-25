@@ -33,25 +33,18 @@ class DataConfig:
 
     Specifies dataset paths, climate model, experiments, and pattern scaling parameters.
     """
-    # root_dir: str = "/orcd/data/raffaele/001/shahineb/products/cmip6/processed"  # CMIP6 data directory
-    root_dir: str = "/home/shahineb/fs06/data/products/cmip6/processed"
+    root_dir: str = "/orcd/data/raffaele/001/shahineb/products/cmip6/processed"  # CMIP6 data directory
     model_name: str = "MPI-ESM1-2-LR"  # Climate model to use
-    # train_experiments: tuple = ("piControl", "historical", "ssp126", "ssp585")  # Training experiments
     train_experiments: dict = field(
         default_factory=lambda: {
             "piControl": ["r1i1p1f1"],
-            "ssp126": ["r1i1p1f1", "r2i1p1f1"]
+            "historical": ["r1i1p1f1"],
+            "ssp126": [f"r{i + 1}i1p1f1" for i in range(3)],
+            "ssp585": [f"r{i + 1}i1p1f1" for i in range(3)]
         }
-    ) # Training experiments
-    val_experiments: dict = field(
-        default_factory=lambda: {
-            "ssp245": ["r1i1p1f1", "r2i1p1f1"]
-        }
-    ) # Validation experiments
+    )
     variables: tuple = ("tas", "pr", "hurs", "sfcWind")  # Climate variables
-    val_time_slice: tuple = ("2080-01", "2100-12")  # Time range for validation
     train_gmst_path: str = os.path.join(CACHE_DIR, "gmsttrain.nc")  # Path to save/load precomputed annual GMST anomaly time series
-    val_gmst_path: str = os.path.join(CACHE_DIR, "gmstval.nc")  # Path to save/load precomputed annual GMST anomaly time series
     pattern_scaling_path: str = os.path.join(CACHE_DIR, "β.npy")  # Path to save/load pattern scaling coefficients
     norm_stats_path: str = os.path.join(CACHE_DIR, "μ_σ.npz")  # Path to save/load normalization statistics
     in_memory: bool = True  # Whether to load full dataset into memory
@@ -67,14 +60,14 @@ class TrainingConfig:
     Defines hyperparameters, logging intervals, and output paths.
     """
     batch_size: int = 32  # Number of samples per batch
-    learning_rate: float = 3e-4  # Adam optimizer learning rate
+    learning_rate: float = 1e-4  # Adam optimizer learning rate
     ema_decay: float = 0.999  # Exponential moving average decay
-    epochs: int = 10  # Number of training epochs
+    epochs: int = 1  # Number of training epochs
     log_interval: int = 20  # Steps between metric logging
     queue_length: int = 30  # Length of sliding window for metrics
-    sample_interval: int = 10000  # Steps between sample generation
+    sample_interval: int = 1000  # Steps between sample generation
     sample_steps: int = 30  # Number of diffusion steps for sampling
-    sample_count: int = 10  # Number of samples to generate
+    sample_count: int = 2  # Number of samples to generate
     random_seed: int = 0  # Seed for reproducibility
     checkpoint_interval: int = 1  # Epochs between checkpoints
     checkpoint_filename: str = os.path.join(CACHE_DIR, "ckpt.eqx")  # Output checkpoint filename

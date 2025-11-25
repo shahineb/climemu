@@ -10,10 +10,9 @@ import optax
 from tqdm import tqdm
 import wandb
 
-from src.diffusion import denoising_make_step_doy, denoising_batch_loss_doy
+from src.diffusion import denoising_make_step_doy
 from src.datasets import PatternToDayCMIP6Data
 from paper.mpi.config import Config
-from .data import make_dataloader
 from . import utils
 
 
@@ -39,7 +38,6 @@ class TrainingState:
 def train_epoch(
     state: TrainingState,
     train_loader: object,
-    val_loader: object,
     schedule: object,
     μ: jnp.ndarray,
     σ: jnp.ndarray,
@@ -72,11 +70,10 @@ def train_epoch(
     grad_queue = deque(maxlen=config.training.queue_length)
     
     # Setup random keys for training and validation
-    χtrain, χval = jr.split(jr.PRNGKey(state.epoch + 1), 2)
+    χtrain, _ = jr.split(jr.PRNGKey(state.epoch + 1))
     
     # Calculate steps per epoch
     n_train_steps = len(train_loader)
-    n_val_steps = len(val_loader)
     
     # Training phase
     with tqdm(total=n_train_steps) as pbar:
@@ -119,23 +116,6 @@ def train_epoch(
                 # Log samples and metrics to wandb
                 utils.log_samples(pred_samples, log_target_data, config.data.variables, state.step)
 
-    # Validation phase
-    # val_loss = 0
-    # with tqdm(total=n_val_steps, desc="Evaluation") as pbar:        
-    #     for batch_idx, batch in enumerate(val_loader):
-    #         # Process batch and compute validation loss
-    #         doy, x = utils.process_batch(batch, μ, σ)
-    #         val_value = denoising_batch_loss_doy(
-    #             state.ema_model, config.model.context_channels, schedule, x, doy, χval
-    #         )
-    #         val_loss += val_value.item()
-    #         # Update progress bar
-    #         pbar.set_description(f"Epoch {state.epoch + 1} | Val {round(val_loss / (batch_idx + 1), 2)}")
-    #         pbar.update(1)
-
-    # Log validation loss
-    # wandb.log({"Validation Loss": val_loss / n_val_steps}, step=state.step)
-
     # Checkpoint weights
     if (state.epoch + 1) % config.training.checkpoint_interval == 0:
         eqx.tree_serialise_leaves(config.training.checkpoint_filename, state.ema_model)
@@ -147,7 +127,6 @@ def train_epoch(
 def train(
     model: eqx.Module,
     train_dataset: PatternToDayCMIP6Data,
-    val_dataset: PatternToDayCMIP6Data,
     schedule: object,
     μ: jnp.ndarray,
     σ: jnp.ndarray,
@@ -173,26 +152,21 @@ def train(
     # Setup optimizer
     optimizer = optax.adam(learning_rate=config.training.learning_rate)
     opt_state = optimizer.init(eqx.filter(model, eqx.is_inexact_array))
-    
+
     # Initialize training state
     ema_model = copy.deepcopy(model)
     state = TrainingState(model, ema_model, opt_state)
 
     # Create data loaders with numpy collate function
-    train_loader = make_dataloader(
+    train_loader = utils.make_dataloader(
         train_dataset,
         batch_size=config.training.batch_size
     )
 
-    # val_loader = make_dataloader(
-    #     val_dataset,
-    #     batch_size=config.training.batch_size
-    # )
-
     # Get a single batch used visualization and metrics logging
     log_doy, log_pattern, log_target_data = utils.get_sample_batch(
         dataset=train_dataset,
-        batch_size=16,
+        batch_size=4,
         key=jr.PRNGKey(config.training.random_seed)
     )
     log_sampler = partial(
@@ -211,12 +185,12 @@ def train(
     wandb.init(project=config.training.wandb_project, config=config)
 
     # Log initial context for reference
-    utils.log_initial_context(log_pattern)
+    utils.log_initial_context(log_pattern, model.doy_embedding(log_doy[0]), log_doy[0])
 
     # Training loop - iterate through epochs
     for _ in range(config.training.epochs):
         state = train_epoch(
-            state, train_loader, None, schedule,
+            state, train_loader, schedule,
             μ, σ, log_sampler, log_target_data, config, optimizer
         )
     

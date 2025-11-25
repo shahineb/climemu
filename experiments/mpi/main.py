@@ -7,7 +7,6 @@ from experiments.mpi.trainer import train
 from experiments.mpi.utils import load_or_compute_edges, print_parameter_count
 
 
-
 def main():
     """Main entry point for training the climate diffusion model.
     
@@ -31,18 +30,6 @@ def main():
         gmst_path=config.data.train_gmst_path,
         pattern_scaling_path=config.data.pattern_scaling_path
     )
-    
-    # Load validation dataset using pattern scaling from training
-    # This ensures consistent pattern scaling between train and validation
-    # val_dataset = load_dataset(
-    #     root=config.data.root_dir,
-    #     model=config.data.model_name,
-    #     experiments=config.data.val_experiments,
-    #     variables=config.data.variables,
-    #     subset={'time': slice(*config.data.val_time_slice)},
-    #     gmst_path=config.data.val_gmst_path,
-    #     external_β=train_dataset.β  # Use training pattern scaling coefficients
-    # )
     
     # Compute normalization statistics from a random subset of the training data
     μ_train, σ_train = compute_normalization(
@@ -93,7 +80,7 @@ def main():
     print_parameter_count(model)
     
     # Train the model
-    model = train(model, train_dataset, None, schedule, μ_train, σ_train, config)
+    model = train(model, train_dataset, schedule, μ_train, σ_train, config)
     
     # Save the trained model
     eqx.tree_serialise_leaves(config.training.model_filename, model)
