@@ -1,12 +1,14 @@
+# %%
 import os
 from typing import List, Optional, Dict, Union
 import functools
 from tqdm import tqdm
 import numpy as np
 import xarray as xr
+import zarr
 from torch.utils.data import Dataset
 from dask.diagnostics import ProgressBar
-# from .constants import SECONDS_PER_DAY
+from .constants import SECONDS_PER_DAY
 
 
 class AmonCMIP6Data(Dataset):
@@ -256,15 +258,13 @@ class AmonCMIP6Data(Dataset):
         return len(self.lon)
     
 
-
 class DayCMIP6Data(Dataset):
-    def __init__(self, root: str, model: str, variables: List, experiments: Dict, subset: Optional[Dict] = None):
+    def __init__(self, root: str, model: str, variables: List, experiments: Dict):
         self.root = root
         self.model = model
         self.variables = list(variables)
         self.experiments = experiments
-        self.time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
-        self._init_dtree(experiments, subset)
+        self._init_dtree(experiments)
         self._init_indexmap()
 
     @staticmethod
@@ -272,73 +272,36 @@ class DayCMIP6Data(Dataset):
         filename = f"{variable}_day_{model}_{experiment}_{variant}_daily_anomaly.zarr"
         path = os.path.join(root, model, experiment, variant, f"{variable}_anomaly", "day", filename)
         return path
-    
+
     def _load_zarr(self, experiment: str, variable: str, variant: str) -> xr.Dataset:
         store_dir = self.get_store_path(self.root, self.model, experiment, variable, variant)
         if not os.path.isdir(store_dir):
             raise FileNotFoundError(f"No files found for {variable} in {experiment}, {variant}")
-        
-        dataset = xr.open_zarr(store_dir,
-                               decode_times=False,
-                               consolidated=True).unify_chunks()
-        dataset = dataset.drop_vars(["lat_bnds", "lon_bnds", "height", "dayofyear"], errors="ignore")
-        if variable == "pr":
-            dataset = dataset * SECONDS_PER_DAY
-            dataset["pr"].attrs["units"] = "mm/day"
+        dataset = zarr.open_consolidated(store_dir, mode='r')[variable]
         return dataset
     
-    def _init_dtree(self, experiments: Dict, subset: Optional[Dict]):
+    def _init_dtree(self, experiments: Dict):
         n_dataset = sum(map(len, experiments.values()))
-        merged_experiments = dict()
+        self.dtree = dict()
         with tqdm(total=n_dataset, desc="Progress") as pbar:
             for e, variants in experiments.items():
-                merged_variants = dict()
                 for ω in variants:
                     pbar.set_description(f"Building datatree for {e}/{ω}")
-                    ds_list = [self._load_zarr(e, v, ω) for v in self.variables]
-                    merged_variants[ω] = xr.merge(ds_list, compat="override")
+                    path = f"{e}/{ω}"
+                    self.dtree[path] = {v: self._load_zarr(e, v, ω) for v in self.variables}
                     _ = pbar.update(1)
-                merged_experiments[e] = merged_variants
-
-            self.dtree = xr.DataTree.from_dict(merged_experiments, nested=True, name="DayCMIP6Data")
-            if subset is not None:
-                self.dtree = self.dtree.sel(subset)
             pbar.set_description("Datatree initialized")
 
     def _init_indexmap(self):
         """Initialize the indexmap for accessing data points.
         """
-        leaves_lengths = [leaf.ds.sizes["time"] for leaf in self.dtree.leaves]
+        leaves_lengths = [leaf["tas"].shape[0] for leaf in self.leaves]
         self._cumulative_leaves_lengths = np.cumsum([0] + leaves_lengths)
         def indexmap(idx):
             leaf_idx = np.searchsorted(self._cumulative_leaves_lengths, idx, "right") - 1
             time_idx = idx - self._cumulative_leaves_lengths[leaf_idx]
             return leaf_idx, time_idx
         self.indexmap = indexmap
-
-    def isel(self, *args, **kwargs) -> xr.Dataset:
-        """Perform index-based selection on the dataset.
-
-        Args:
-            *args: Positional arguments passed to xarray.Dataset.isel().
-            **kwargs: Keyword arguments passed to xarray.Dataset.isel().
-
-        Returns:
-            xr.Dataset: Selected subset of the dataset.
-        """
-        return self.dtree.isel(*args, **kwargs)
-
-    def sel(self, *args, **kwargs) -> xr.Dataset:
-        """Perform label-based selection on the dataset.
-
-        Args:
-            *args: Positional arguments passed to xarray.Dataset.sel().
-            **kwargs: Keyword arguments passed to xarray.Dataset.sel().
-
-        Returns:
-            xr.Dataset: Selected subset of the dataset.
-        """
-        return self.dtree.sel(*args, **kwargs)
 
     def __len__(self) -> int:
         """Get the number of data points in the dataset.
@@ -373,76 +336,258 @@ class DayCMIP6Data(Dataset):
             return self.dtree[idx]
         elif isinstance(idx, int):
             leaf_idx, time_idx = self.indexmap(idx)
-            return self.dtree.leaves[leaf_idx].ds.isel(time=time_idx)
+            leaf = self.leaves[leaf_idx]
+            return {var: leaf[var][time_idx, :, :] for var in self.variables}
         else:
             raise ValueError(f"Invalid index type: {type(idx)}")
 
     @functools.cached_property
-    def paths(self) -> List[str]:
+    def paths(self):
         """Get list of experiment names.
 
         Returns:
             List[str]: List of leaves paths.
         """
-        return list([leaf.path for leaf in self.dtree.leaves])
+        return list(self.dtree.keys())
     
     @functools.cached_property
-    def lat(self) -> np.ndarray:
-        """Get latitude coordinates.
+    def leaves(self):
+        return list(self.dtree.values())
 
-        Returns:
-            np.ndarray: Array of latitude values.
-        """
-        return self.dtree.leaves[0].lat.values
+    @functools.cached_property
+    def lat(self):
+        e = list(self.experiments.keys())[0]
+        ω = self.experiments[e][0]
+        v = self.variables[0]
+        store_dir = self.get_store_path(self.root, self.model, e, v, ω)
+        lat = zarr.open_consolidated(store_dir, mode='r')["lat"][:]
+        return lat
     
     @functools.cached_property
-    def lon(self) -> np.ndarray:
-        """Get longitude coordinates.
-
-        Returns:
-            np.ndarray: Array of longitude values.
-        """
-        return self.dtree.leaves[0].lon.values
+    def lon(self):
+        e = list(self.experiments.keys())[0]
+        ω = self.experiments[e][0]
+        v = self.variables[0]
+        store_dir = self.get_store_path(self.root, self.model, e, v, ω)
+        lat = zarr.open_consolidated(store_dir, mode='r')["lon"][:]
+        return lat
     
     @functools.cached_property
-    def nlat(self) -> int:
-        """Get number of latitude points.
-
-        Returns:
-            int: Number of latitude points.
-        """
+    def nlat(self):
         return len(self.lat)
-    
+
     @functools.cached_property
-    def nlon(self) -> int:
-        """Get number of longitude points.
-
-        Returns:
-            int: Number of longitude points.
-        """
+    def nlon(self):
         return len(self.lon)
+    
+
+
+# store_dir = DayCMIP6Data.get_store_path(root, model, "piControl", "tas", "r1i1p1f1")
+# tas = zarr.open_consolidated(store_dir, mode='r')
+
+# cmip6 = DayCMIP6Data(root, model, variables, experiments)
+
+# %%
+# import time
+# start = time.perf_counter()
+# for i in range(100):
+#     _ = cmip6[i + 1]
+# end = time.perf_counter()
+# print(f"Elapsed time: {end - start:.4f} seconds")
 
 
 
-# import os, sys
-# from functools import partial
-# base_dir = os.path.join(os.getcwd(), "../..")
-# if base_dir not in sys.path:
-#     sys.path.append(base_dir)
-# from src.utils import arrays
+# # %%
+# class DayCMIP6Data(Dataset):
+#     def __init__(self, root: str, model: str, variables: List, experiments: Dict, subset: Optional[Dict] = None):
+#         self.root = root
+#         self.model = model
+#         self.variables = list(variables)
+#         self.experiments = experiments
+#         self.time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
+#         self._init_dtree(experiments, subset)
+#         self._init_indexmap()
 
+#     @staticmethod
+#     def get_store_path(root: str, model: str, experiment: str, variable: str, variant: str) -> str:
+#         filename = f"{variable}_day_{model}_{experiment}_{variant}_daily_anomaly.zarr"
+#         path = os.path.join(root, model, experiment, variant, f"{variable}_anomaly", "day", filename)
+#         return path
+    
+#     def _load_zarr(self, experiment: str, variable: str, variant: str) -> xr.Dataset:
+#         store_dir = self.get_store_path(self.root, self.model, experiment, variable, variant)
+#         if not os.path.isdir(store_dir):
+#             raise FileNotFoundError(f"No files found for {variable} in {experiment}, {variant}")
+        
+#         dataset = xr.open_zarr(store_dir,
+#                                decode_times=False,
+#                                consolidated=True).unify_chunks()
+#         if variable == "pr":
+#             dataset = dataset * SECONDS_PER_DAY
+#             dataset["pr"].attrs["units"] = "mm/day"
+#         return dataset
+    
+#     def _init_dtree(self, experiments: Dict, subset: Optional[Dict]):
+#         n_dataset = sum(map(len, experiments.values()))
+#         merged_experiments = dict()
+#         with tqdm(total=n_dataset, desc="Progress") as pbar:
+#             for e, variants in experiments.items():
+#                 merged_variants = dict()
+#                 for ω in variants:
+#                     pbar.set_description(f"Building datatree for {e}/{ω}")
+#                     ds_list = [self._load_zarr(e, v, ω) for v in self.variables]
+#                     merged_variants[ω] = xr.merge(ds_list, compat="override")
+#                     _ = pbar.update(1)
+#                 merged_experiments[e] = merged_variants
+
+#             self.dtree = xr.DataTree.from_dict(merged_experiments, nested=True, name="DayCMIP6Data")
+#             if subset is not None:
+#                 self.dtree = self.dtree.sel(subset)
+#             pbar.set_description("Datatree initialized")
+
+#     def _init_indexmap(self):
+#         """Initialize the indexmap for accessing data points.
+#         """
+#         leaves_lengths = [leaf.ds.sizes["time"] for leaf in self.dtree.leaves]
+#         self._cumulative_leaves_lengths = np.cumsum([0] + leaves_lengths)
+#         def indexmap(idx):
+#             leaf_idx = np.searchsorted(self._cumulative_leaves_lengths, idx, "right") - 1
+#             time_idx = idx - self._cumulative_leaves_lengths[leaf_idx]
+#             return leaf_idx, time_idx
+#         self.indexmap = indexmap
+
+#     def isel(self, *args, **kwargs) -> xr.Dataset:
+#         """Perform index-based selection on the dataset.
+
+#         Args:
+#             *args: Positional arguments passed to xarray.Dataset.isel().
+#             **kwargs: Keyword arguments passed to xarray.Dataset.isel().
+
+#         Returns:
+#             xr.Dataset: Selected subset of the dataset.
+#         """
+#         return self.dtree.isel(*args, **kwargs)
+
+#     def sel(self, *args, **kwargs) -> xr.Dataset:
+#         """Perform label-based selection on the dataset.
+
+#         Args:
+#             *args: Positional arguments passed to xarray.Dataset.sel().
+#             **kwargs: Keyword arguments passed to xarray.Dataset.sel().
+
+#         Returns:
+#             xr.Dataset: Selected subset of the dataset.
+#         """
+#         return self.dtree.sel(*args, **kwargs)
+
+#     def __len__(self) -> int:
+#         """Get the number of data points in the dataset.
+
+#         Returns:
+#             int: Number of data points.
+#         """
+#         return self._cumulative_leaves_lengths[-1]
+
+#     def __repr__(self):
+#         """String representation of the dataset.
+
+#         Returns:
+#             str: String representation of the xarray.DataTree.
+#         """
+#         return self.dtree.__repr__()
+
+#     def __getitem__(self, idx: Union[str, int]) -> xr.Dataset:
+#         """Get item by string or integer indexing.
+
+#         Args:
+#             idx: If str: variable name to select.
+#                  If int: position in the indexmap to select.
+
+#         Returns:
+#             xr.Dataset: Selected data.
+
+#         Raises:
+#             ValueError: If idx is not a string or integer.
+#         """
+#         if isinstance(idx, str):
+#             return self.dtree[idx]
+#         elif isinstance(idx, int):
+#             leaf_idx, time_idx = self.indexmap(idx)
+#             return self.dtree.leaves[leaf_idx].ds.isel(time=time_idx)
+#         else:
+#             raise ValueError(f"Invalid index type: {type(idx)}")
+
+#     @functools.cached_property
+#     def paths(self) -> List[str]:
+#         """Get list of experiment names.
+
+#         Returns:
+#             List[str]: List of leaves paths.
+#         """
+#         return list([leaf.path for leaf in self.dtree.leaves])
+    
+#     @functools.cached_property
+#     def lat(self) -> np.ndarray:
+#         """Get latitude coordinates.
+
+#         Returns:
+#             np.ndarray: Array of latitude values.
+#         """
+#         return self.dtree.leaves[0].lat.values
+    
+#     @functools.cached_property
+#     def lon(self) -> np.ndarray:
+#         """Get longitude coordinates.
+
+#         Returns:
+#             np.ndarray: Array of longitude values.
+#         """
+#         return self.dtree.leaves[0].lon.values
+    
+#     @functools.cached_property
+#     def nlat(self) -> int:
+#         """Get number of latitude points.
+
+#         Returns:
+#             int: Number of latitude points.
+#         """
+#         return len(self.lat)
+    
+#     @functools.cached_property
+#     def nlon(self) -> int:
+#         """Get number of longitude points.
+
+#         Returns:
+#             int: Number of longitude points.
+#         """
+#         return len(self.lon)
+
+
+
+# %%
 # SECONDS_PER_DAY = 86400
-
-
 # cmip6  = DayCMIP6Data(
-#     # root="/home/shahineb/fs06/data/products/cmip6/processed",
-#                       root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
+#     root="/home/shahineb/fs06/data/products/cmip6/processed",
 #                        model="MPI-ESM1-2-LR",
 #                        variables=["tas", "pr", "hurs", "sfcWind"],
-#                        experiments={
-#                            "ssp126": ["r1i1p1f1", "r2i1p1f1", "r3i1p1f1"],
-#                         #    "ssp245": ["r1i1p1f1", "r2i1p1f1"]
-#                        })
+#                       experiments={
+#                           "piControl": ["r1i1p1f1"],
+#                           "ssp126": ["r1i1p1f1", "r2i1p1f1"]
+#                       })
+
+
+# %%
+# import time
+# start = time.perf_counter()
+# for i in range(10):
+#     foo = cmip6[i + 1]
+#     _ = np.stack([foo[v] for v in cmip6.variables])
+# end = time.perf_counter()
+# print(f"Elapsed time: {end - start:.4f} seconds")
+
+
+
+# %%
 
 # cmip6  = DayCMIP6Data(root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
 #                       model="MPI-ESM1-2-LR",
@@ -483,3 +628,4 @@ class DayCMIP6Data(Dataset):
 #     _ = ds_zarr["tas"][i, :, :]
 # end = time.perf_counter()
 # print(f"Elapsed time: {end - start:.4f} seconds")  # Elapsed time: 0.0478 seconds
+# %%
