@@ -33,7 +33,7 @@ class PatternToAmonCMIP6Data(Dataset):
     - Prediction of spatial temperature patterns
     """
 
-    def __init__(self, gmst: xr.DataTree, cmip6data: AmonCMIP6Data, 
+    def __init__(self, gmst: xr.DataTree, cmip6data: AmonCMIP6Data,
                  β: Optional[np.ndarray] = None, in_memory: bool = False):
         """Initialize the pattern scaling dataset.
 
@@ -195,7 +195,7 @@ class PatternToAmonCMIP6Data(Dataset):
             str: String representation.
         """
         return f"PatternScalingtoAmonCMIP6Data(\n gmst={self.gmst}, \n cmip6data={self.cmip6data}\n)"
-    
+
 
 
 

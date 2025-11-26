@@ -9,7 +9,6 @@ import zarr
 from torch.utils.data import Dataset
 from dask.diagnostics import ProgressBar
 from .constants import SECONDS_PER_DAY
-# SECONDS_PER_DAY = 86400
 
 
 class AmonCMIP6Data(Dataset):
@@ -362,6 +361,8 @@ class DayCMIP6Data(Dataset):
             output = {v: leaf[v][time_idx, ...] for v in self.variables}
             output["doy"] = leaf["doy"][time_idx].item()
             output["year"] = year.item()
+            if "pr" in self.variables:
+                output["pr"] = output["pr"] * SECONDS_PER_DAY
             return output
         else:
             raise ValueError(f"Invalid index type: {type(idx)}")

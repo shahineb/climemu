@@ -37,10 +37,10 @@ class DataConfig:
     model_name: str = "MPI-ESM1-2-LR"  # Climate model to use
     train_experiments: dict = field(
         default_factory=lambda: {
-            "piControl": ["r1i1p1f1"],
-            "historical": ["r1i1p1f1"],
-            "ssp126": [f"r{i + 1}i1p1f1" for i in range(3)],
-            "ssp585": [f"r{i + 1}i1p1f1" for i in range(3)]
+            "piControl": ["r1i1p1f1"]
+            # "historical": ["r1i1p1f1"],
+            # "ssp126": [f"r{i + 1}i1p1f1" for i in range(3)],
+            # "ssp585": [f"r{i + 1}i1p1f1" for i in range(3)]
         }
     )
     variables: tuple = ("tas", "pr", "hurs", "sfcWind")  # Climate variables
@@ -62,7 +62,7 @@ class TrainingConfig:
     batch_size: int = 32  # Number of samples per batch
     learning_rate: float = 1e-4  # Adam optimizer learning rate
     ema_decay: float = 0.999  # Exponential moving average decay
-    epochs: int = 1  # Number of training epochs
+    epochs: int = 2  # Number of training epochs
     log_interval: int = 20  # Steps between metric logging
     queue_length: int = 30  # Length of sliding window for metrics
     sample_interval: int = 1000  # Steps between sample generation
