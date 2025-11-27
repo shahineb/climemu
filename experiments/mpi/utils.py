@@ -55,8 +55,8 @@ class JaxDataLoader:
         self._started = False
 
     def _start_workers(self):
-        if self._started:
-            return
+        self.q = queue.Queue(maxsize=self.prefetch)
+        self._stop = threading.Event()
         self._started = True
 
         self.workers = []
@@ -72,22 +72,22 @@ class JaxDataLoader:
     def _worker_loop(self, wid):
         rng = np.random.default_rng(self.seed + wid)
         n = len(self.dataset)
+        # print(f"[Worker {wid}] Starting worker, dataset length = {n}")
 
-        # Create one permutation per worker
         idx = np.arange(n)
         if self.shuffle:
             rng.shuffle(idx)
 
-        # Worker processes every num_workers-th batch
-        # Example: worker 0 → batches 0, W, 2W, ...
         for start in range(wid * self.batch_size,
                            n,
                            self.batch_size * self.num_workers):
 
             if self._stop.is_set():
-                return
+                # print(f"[Worker {wid}] Stop flag detected")
+                break
 
             bidx = idx[start:start + self.batch_size]
+            # print(f"[Worker {wid}] Processing batch, start={start}, bidx_len={len(bidx)}")
             if len(bidx) == 0:
                 continue
 
@@ -95,10 +95,27 @@ class JaxDataLoader:
             if self.collate_fn:
                 batch = self.collate_fn(batch)
 
-            self.q.put(batch)
+            # --- NON BLOCKING PUT ---
+            while not self._stop.is_set():
+                try:
+                    # print(f"[Worker {wid}] Processing batch, start={start}, bidx_len={len(bidx)}")
+                    self.q.put(batch, block=True, timeout=0.1)
+                    break
+                except queue.Full:
+                    # print(f"[Worker {wid}] Queue is full while putting batch")
+                    pass
 
-        # When this worker is done, push sentinel
-        self.q.put(SENTINEL)
+        # --- Non-blocking sentinel ---
+        # print(f"[Worker {wid}] Sending sentinel")
+        while True:
+            try:
+                self.q.put(SENTINEL, block=True, timeout=0.1)
+                break
+            except queue.Full:
+                # print(f"[Worker {wid}] Queue full while sending sentinel")
+                if self._stop.is_set():
+                    return
+                continue
 
     def __iter__(self):
         self._start_workers()
@@ -106,14 +123,18 @@ class JaxDataLoader:
         return self
 
     def __next__(self):
+        # print("[Main] Waiting for q.get()...")
         item = self.q.get()
+        # print(f"[Main] q.get() returned {type(item)}")
 
         if item is SENTINEL:
             # One worker finished
             self.finished_workers += 1
+            # print(f"[Main] Received SENTINEL ({self.finished_workers}/{self.num_workers})")
 
             if self.finished_workers == self.num_workers:
                 # All workers done: stop iteration
+                # print("[Main] All workers finished")
                 self.close()
                 raise StopIteration
 
@@ -145,6 +166,7 @@ def make_dataloader(dataset, batch_size, shuffle=True, num_workers=32, prefetch=
         prefetch=prefetch,
         seed=seed,
     )
+
 
 ################################################################################
 #                               HEALPIX-LATLON EDGES                           #

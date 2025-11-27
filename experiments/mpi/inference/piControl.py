@@ -121,7 +121,7 @@ def main():
     model, β, lat, lon, μ_train, σ_train, σmax, σpiControl = load_model_and_data(config)
 
     # Prepare data loader
-    n_samples = 2
+    n_samples = 30
     batch_size = 32
     key = jr.PRNGKey(0)
     nlat, nlon = len(lat), len(lon)
@@ -182,21 +182,21 @@ if __name__ == "__main__":
 # ds = xr.open_zarr(path, consolidated=True)
 
 # tas_climatology = xr.open_dataset("/orcd/home/002/shahineb/data/products/cmip6/processed/MPI-ESM1-2-LR/piControl/r1i1p1f1/tas_climatology/day/tas_day_MPI-ESM1-2-LR_r1i1p1f1_climatology.nc")
-# tas_climatology = xr.open_dataset("/orcd/home/002/shahineb/data/products/cmip6/processed/MPI-ESM1-2-LR/piControl/r1i1p1f1/pr_climatology/day/pr_day_MPI-ESM1-2-LR_r1i1p1f1_climatology.nc")
-# tas_climatology = xr.open_dataset("/orcd/home/002/shahineb/data/products/cmip6/processed/MPI-ESM1-2-LR/piControl/r1i1p1f1/hurs_climatology/day/hurs_day_MPI-ESM1-2-LR_r1i1p1f1_climatology.nc")
-# tas_climatology = xr.open_dataset("/orcd/home/002/shahineb/data/products/cmip6/processed/MPI-ESM1-2-LR/piControl/r1i1p1f1/sfcWind_climatology/day/sfcWind_day_MPI-ESM1-2-LR_r1i1p1f1_climatology.nc")
+# pr_climatology = xr.open_dataset("/orcd/home/002/shahineb/data/products/cmip6/processed/MPI-ESM1-2-LR/piControl/r1i1p1f1/pr_climatology/day/pr_day_MPI-ESM1-2-LR_r1i1p1f1_climatology.nc")
+# hurs_climatology = xr.open_dataset("/orcd/home/002/shahineb/data/products/cmip6/processed/MPI-ESM1-2-LR/piControl/r1i1p1f1/hurs_climatology/day/hurs_day_MPI-ESM1-2-LR_r1i1p1f1_climatology.nc")
+# sfcWind_climatology = xr.open_dataset("/orcd/home/002/shahineb/data/products/cmip6/processed/MPI-ESM1-2-LR/piControl/r1i1p1f1/sfcWind_climatology/day/sfcWind_day_MPI-ESM1-2-LR_r1i1p1f1_climatology.nc")
 
 
-# tas = ds["sfcWind"] + tas_climatology["sfcWind"]
+# da = ds["hurs"] + hurs_climatology["hurs"]
 
-# tas_mean = tas.mean(["dayofyear", "sample"]).compute()
-# tas_stddev = tas.std(["dayofyear", "sample"]).compute()
+# mean = da.mean(["dayofyear", "sample"]).compute()
+# stddev = da.std(["dayofyear", "sample"]).compute()
 
-# tas_mean.plot()
+# mean.plot(vmin=0)
 # plt.savefig('mean.jpg', dpi=300)
 # plt.close()
 
-# tas_stddev.plot()
+# stddev.plot()
 # plt.savefig('stddev.jpg', dpi=300)
 # plt.close()
 

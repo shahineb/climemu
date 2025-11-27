@@ -37,7 +37,7 @@ class TrainingState:
 
 def train_epoch(
     state: TrainingState,
-    train_loader: object,
+    train_dataset: object,
     schedule: object,
     μ: jnp.ndarray,
     σ: jnp.ndarray,
@@ -71,8 +71,11 @@ def train_epoch(
     
     # Setup random keys for training and validation
     χtrain, _ = jr.split(jr.PRNGKey(state.epoch + 1))
-    
-    # Calculate steps per epoch
+
+    # Create data loader
+    train_loader = utils.make_dataloader(train_dataset,
+                                         batch_size=config.training.batch_size,
+                                         seed=state.epoch)
     n_train_steps = len(train_loader)
     
     # Training phase
@@ -157,12 +160,6 @@ def train(
     ema_model = copy.deepcopy(model)
     state = TrainingState(model, ema_model, opt_state)
 
-    # Create data loaders with numpy collate function
-    train_loader = utils.make_dataloader(
-        train_dataset,
-        batch_size=config.training.batch_size
-    )
-
     # Get a single batch used visualization and metrics logging
     log_doy, log_pattern, log_target_data = utils.get_sample_batch(
         dataset=train_dataset,
@@ -190,7 +187,7 @@ def train(
     # Training loop - iterate through epochs
     for _ in range(config.training.epochs):
         state = train_epoch(
-            state, train_loader, schedule,
+            state, train_dataset, schedule,
             μ, σ, log_sampler, log_target_data, config, optimizer
         )
     
