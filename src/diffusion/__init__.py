@@ -1,6 +1,7 @@
 from .nn import (
     HealPIXUNet,
-    HealPIXUNetDoY
+    HealPIXUNetDoY,
+    Song2020HealPIXUNet
 )
 
 from .losses import (
@@ -22,6 +23,7 @@ from .samplers import (
 __all__ = [
     "HealPIXUNet",
     "HealPIXUNetDoY",
+    "Song2020HealPIXUNet",
     "denoising_make_step",
     "denoising_batch_loss",
     "denoising_make_step_doy",

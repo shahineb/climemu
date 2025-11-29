@@ -1,3 +1,4 @@
+# %%
 from typing import List, Tuple, Callable
 
 import equinox as eqx
@@ -5,17 +6,17 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 
-from .backbones import ConvNet
-from .modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
-from .timeencoder import GaussianFourierProjection, DoYFourierProjection
+# from .backbones import ConvNet
+# from .modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
+# from .timeencoder import GaussianFourierProjection, DoYFourierProjection
 
-# import os, sys
-# base_dir = os.path.join(os.getcwd(), '../../..')
-# if base_dir not in sys.path:
-#     sys.path.append(base_dir)
-# from src.diffusion.nn.backbones import ConvNet
-# from src.diffusion.nn.modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
-# from src.diffusion.nn.timeencoder.gaussianfourier import GaussianFourierProjection, DoYFourierProjection
+import os, sys
+base_dir = os.path.join(os.getcwd(), '../../..')
+if base_dir not in sys.path:
+    sys.path.append(base_dir)
+from src.diffusion.nn.backbones import ConvNet
+from src.diffusion.nn.modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
+from src.diffusion.nn.timeencoder.gaussianfourier import GaussianFourierProjection, DoYFourierProjection
 
 
 class ResnetBlockDown(eqx.Module):
@@ -36,6 +37,8 @@ class ResnetBlockDown(eqx.Module):
     proj: HealPIXFacetConvBlock
     conv: HealPIXConvBlock
     linear: eqx.nn.Linear
+    in_channels: int
+    out_channels: int
 
     def __init__(self,
                  in_channels: int,
@@ -53,6 +56,9 @@ class ResnetBlockDown(eqx.Module):
             stride: Stride of convolution
             padding: Padding size
         """
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
         χ1, χ2, χ3, χ4 = jr.split(key, 4)
         self.down = HealPIXFacetConvBlock(in_channels=in_channels,
                                           out_channels=out_channels,
@@ -127,6 +133,8 @@ class ResnetBlockUp(eqx.Module):
     proj: HealPIXFacetConvTransposeBlock
     conv: HealPIXConvBlock
     linear: eqx.nn.Linear
+    in_channels: int
+    out_channels: int
 
     def __init__(self,
                  in_channels: int,
@@ -144,6 +152,9 @@ class ResnetBlockUp(eqx.Module):
             stride: Stride of convolution
             padding: Padding size
         """
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
         χ1, χ2, χ3, χ4 = jr.split(key, 4)
         self.up = HealPIXFacetConvTransposeBlock(
             in_channels=in_channels,
@@ -213,6 +224,8 @@ class ResnetBlock(eqx.Module):
     conv2: HealPIXConvBlock
     proj: Callable
     linear: eqx.nn.Linear
+    in_channels: int
+    out_channels: int
 
     def __init__(self,
                  in_channels: int,
@@ -230,6 +243,9 @@ class ResnetBlock(eqx.Module):
             stride: Stride of convolution
             padding: Padding size
         """
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
         χ1, χ2, χ3, χ4 = jr.split(key, 4)
         self.conv1 = HealPIXConvBlock(
             in_channels=in_channels,
@@ -296,198 +312,157 @@ class ResnetBlock(eqx.Module):
         return y
 
 
-class Encoder(ConvNet):
-    """U-Net encoder with time-conditioned residual blocks.
-    
-    Attributes:
-        encoding_layers: Sequential container of downsampling blocks
-    """
-    encoding_layers: eqx.nn.Sequential
 
-    def __init__(self, 
-                 input_size: Tuple[int, ...], 
-                 n_filters: List[int], 
-                 temb_dim: int, 
+# %%
+class Encoder(ConvNet):
+    encoding_layers: eqx.nn.Sequential
+    skip_filters: List[List[int]]
+    def __init__(self,
+                 input_size: Tuple[int, ...],
+                 n_filters: List[int],
+                 n_blocks: List[int],
+                 temb_dim: int,
                  key: jax.random.PRNGKey = jr.PRNGKey(0)):
-        """Initialize the encoder.
-        
-        Args:
-            input_size: Input shape (channels, height, width)
-            n_filters: List of channel numbers for each layer
-            temb_dim: Dimension of time embedding
-        """
         super().__init__(input_size=input_size)
-        keys = jr.split(key, len(n_filters))
-        encoding_layers = [ResnetBlock(in_channels=input_size[0],
-                                       out_channels=n_filters[0],
-                                       temb_dim=temb_dim,
-                                       key=keys[0])]
-        encoding_layers += [ResnetBlockDown(in_channels=n_filters[i],
-                                            out_channels=n_filters[i + 1],
-                                            temb_dim=temb_dim,
-                                            key=keys[i + 1]) for i in range(len(n_filters) - 1)]
+        encoding_layers = []
+
+        # Initial stage
+        encoding_stage = []
+        for j in range(n_blocks[0]):
+            key, χ = jr.split(key)
+            block = ResnetBlock(in_channels=input_size[0] if j == 0 else n_filters[0],
+                                out_channels=n_filters[0],
+                                temb_dim=temb_dim,
+                                key=χ)
+            encoding_stage.append(block)
+        encoding_layers.append(eqx.nn.Sequential(encoding_stage))
+
+        # Downsampling stages
+        for i in range(len(n_filters) - 1):
+            encoding_stage = []
+            key, χ = jr.split(key)
+            down_block = ResnetBlockDown(in_channels=n_filters[i],
+                                        out_channels=n_filters[i],
+                                        temb_dim=temb_dim,
+                                        key=χ)
+            encoding_stage.append(down_block)
+            for j in range(n_blocks[i + 1]):
+                key, χ = jr.split(key)
+                block = ResnetBlock(in_channels=n_filters[i] if j == 0 else n_filters[i + 1],
+                                    out_channels=n_filters[i + 1],
+                                    temb_dim=temb_dim,
+                                    key=χ)
+                encoding_stage.append(block)
+            encoding_layers.append(eqx.nn.Sequential(encoding_stage))
         self.encoding_layers = eqx.nn.Sequential(encoding_layers)
 
-    def _compute_output_size(self) -> Tuple[int, ...]:
-        """Compute the output shape of the encoder.
-        
-        Returns:
-            Shape of the encoder output (channels, height, width)
-        """
-        dummy_input = jnp.zeros(self._input_size)
-        temb_dim = self.encoding_layers[0].linear.in_features
-        dummy_temb = jnp.zeros((temb_dim,))
-        output = self.__call__(dummy_input, dummy_temb)
-        return output[-1].shape
+        # Record skip features sizes for decoder
+        self.skip_filters = [[block.out_channels for block in layers] for layers in self.encoding_layers]
 
-    def __call__(self, x: jax.Array, temb: jax.Array, key: jax.random.PRNGKey = jr.PRNGKey(0)) -> List[jax.Array]:
-        """Forward pass of the encoder.
-        
-        Args:
-            x: Input tensor of shape (channels, height, width)
-            temb: Time embedding tensor
-            key: PRNG key for stochastic operations
-        
-        Returns:
-            List of feature maps at different scales, ordered from 
-            highest resolution to lowest.
-        """
+
+    def __call__(self, x, temb, key=jr.PRNGKey(0)):
         features = []
         for layer in self.encoding_layers:
-            key, χ = jr.split(key)
-            x = layer(x, temb, key=χ)
-            features += [x]
+            for block in layer:
+                key, χ = jr.split(key)
+                x = block(x, temb, key=χ)
+                features += [x]
         return features
 
 
 class Decoder(ConvNet):
-    """U-Net decoder with time-conditioned residual blocks.
-
-    Attributes:
-        decoding_layers: Sequential container of upsampling blocks
-    """
+    bottleneck_layers: eqx.nn.Sequential
     decoding_layers: eqx.nn.Sequential
 
     def __init__(self,
                  input_size: Tuple[int, ...],
-                 n_filters: List[int],
                  skip_filters: List[int],
+                 n_bottleneck_blocks: int,
                  temb_dim: int,
                  key: jax.random.PRNGKey = jr.PRNGKey(0)):
-        """Initialize the decoder.
-        
-        Args:
-            input_size: Input shape from encoder's deepest layer
-            n_filters: List of channel numbers for each layer
-            temb_dim: Dimension of time embedding
-        """
         super().__init__(input_size=input_size)
-        keys = jr.split(key, len(n_filters))
-        decoding_layers = [ResnetBlockUp(in_channels=self.input_size[0],
-                                         out_channels=n_filters[0],
-                                         temb_dim=temb_dim,
-                                         key=keys[0])]
-        for i in range(len(n_filters) - 2):
-            χ1, χ2, χ3, χ4 = jr.split(keys[i + 1], 4)
-            decoding_layers.append(ResnetBlockUp(in_channels=skip_filters[i + 1] + n_filters[i],
-                                                 out_channels=n_filters[i + 1],
-                                                 temb_dim=temb_dim,
-                                                 key=χ1))
-            decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
-                                               out_channels=n_filters[i + 1],
-                                               temb_dim=temb_dim,
-                                               key=χ2))
-            decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
-                                               out_channels=n_filters[i + 1],
-                                               temb_dim=temb_dim,
-                                               key=χ3))
-            decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
-                                               out_channels=n_filters[i + 1],
-                                               temb_dim=temb_dim,
-                                               key=χ4))
-        χ1, χ2, χ3, χ4 = jr.split(keys[-1], 4)
-        decoding_layers += [ResnetBlock(in_channels=skip_filters[-1] + n_filters[-2],
-                                        out_channels=n_filters[-1],
-                                        temb_dim=temb_dim,
-                                        key=χ1)]
-        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
-                                        out_channels=n_filters[-1],
-                                        temb_dim=temb_dim,
-                                        key=χ2)]
-        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
-                                        out_channels=n_filters[-1],
-                                        temb_dim=temb_dim,
-                                        key=χ3)]
-        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
-                                        out_channels=n_filters[-1],
-                                        temb_dim=temb_dim,
-                                        key=χ4)]
+        # Bottleneck stage
+        bottleneck_layers = []
+        for _ in range(n_bottleneck_blocks):
+            key, χ = jr.split(key)
+            block = ResnetBlock(in_channels=input_size[0],
+                                out_channels=input_size[0],
+                                temb_dim=temb_dim,
+                                key=χ)
+            bottleneck_layers.append(block)
+        self.bottleneck_layers = eqx.nn.Sequential(bottleneck_layers)
+
+        decoding_layers = []
+        n_blocks = list(map(len, skip_filters))
+        n_filters = [x[0] for x in skip_filters]
+
+        # Initial decoding stage
+        decoding_stage = []
+        for j in range(n_blocks[0]):
+            key, χ = jr.split(key)
+            block = ResnetBlock(in_channels=input_size[0] + skip_filters[0][j],
+                                out_channels=input_size[0],
+                                temb_dim=temb_dim,
+                                key=χ)
+            decoding_stage.append(block)
+        decoding_layers.append(eqx.nn.Sequential(decoding_stage))
+
+        # Upsampling stages
+        for i in range(len(n_filters) - 1):
+            decoding_stage = []
+            key, χ = jr.split(key)
+            up_block = ResnetBlockUp(in_channels=n_filters[i],
+                                    out_channels=n_filters[i],
+                                    temb_dim=temb_dim,
+                                    key=χ)
+            decoding_stage.append(up_block)
+            for j in range(n_blocks[i + 1]):
+                key, χ = jr.split(key)
+                in_channels = n_filters[i] if j == 0 else n_filters[i + 1]
+                block = ResnetBlock(in_channels=in_channels + skip_filters[i + 1][j],
+                                    out_channels=n_filters[i + 1],
+                                    temb_dim=temb_dim,
+                                    key=χ)
+                decoding_stage.append(block)
+            decoding_layers.append(eqx.nn.Sequential(decoding_stage))
         self.decoding_layers = eqx.nn.Sequential(decoding_layers)
 
-    def __call__(self, features: List[jax.Array], temb: jax.Array, key: jax.random.PRNGKey = jr.PRNGKey(0)) -> jax.Array:
-        """Forward pass of the decoder.
-        
-        Args:
-            features: List of feature maps from encoder, ordered from 
-                     highest resolution to lowest
-            temb: Time embedding tensor
-            key: PRNG key for stochastic operations
-        
-        Returns:
-            Output tensor with upsampled spatial dimensions
-        """
-        x = features.pop()  # Start with bottleneck features
-        for i, layer in enumerate(self.decoding_layers):
+    def __call__(self, features, temb, key=jr.PRNGKey(0)):
+        x = features[-1]
+        for layer in self.bottleneck_layers:
             key, χ = jr.split(key)
             x = layer(x, temb, key=χ)
-            if i % 4 == 0 and len(features) > 0:
-                x = jnp.concatenate([x, features.pop()], axis=0)
+        for i, layer in enumerate(self.decoding_layers):
+            for j, block in enumerate(layer):
+                key, χ = jr.split(key)
+                if i == 0 or j > 0:
+                    x = jnp.concatenate([x, features.pop()], axis=0)
+                x = block(x, temb, key=χ)
         return x
+    
 
-
-class HealPIXUNet(eqx.Module):
-    """Time-conditioned Residual U-Net architecture for lat-lon to HEALPix processing.
-
-    1. Remaps input from lat-lon grid to HEALPix grid using bipartite attention
-    2. Processes the HEALPix data through a time-conditioned U-Net
-    3. Remaps the output back to lat-lon grid
-
-
-    Attributes:
-        embedding: Time embedding module using Gaussian Fourier features
-        to_healpix: Remapping layer from lat-lon to HEALPix grid
-        to_latlon: Remapping layer from HEALPix to lat-lon grid
-        encoder: Downsampling path with residual blocks
-        decoder: Upsampling path with skip connections
-        output_layer: Final convolution layer
-
-    Args:
-        input_size: Input shape (channels, nlat, nlon)
-        nside: HEALPix nside parameter determining resolution (12 * nside^2 pixels)
-        enc_filters: List of channel numbers for encoder layers
-        dec_filters: List of channel numbers for decoder layers
-        out_channels: Number of output channels
-        temb_dim: Dimension of time embedding
-        healpix_emb_dim: Dimension of intermediate HEALPix representation
-        edges_to_healpix: Edge connectivity matrix for lat-lon to HEALPix remapping
-        edges_to_latlon: Edge connectivity matrix for HEALPix to lat-lon remapping
-        key: PRNG key for initialization
-    """
+class Song2020HealPIXUNet(eqx.Module):
     embedding: GaussianFourierProjection
+    doy_embedding: DoYFourierProjection
+    pos_embedding: jax.Array
+    conv_embedding: HealPIXConvBlock
+    to_healpix: BipartiteRemap
+    to_latlon: BipartiteRemap
     encoder: Encoder
     decoder: Decoder
     output_layer: eqx.nn.Conv1d
-    to_healpix: BipartiteRemap
-    to_latlon: BipartiteRemap
 
     def __init__(self,
                  input_size: Tuple[int, ...],
                  nside: int,
-                 enc_filters: List[int],
-                 dec_filters: List[int],
+                 n_filters: List[int],
+                 n_blocks: List[int],
+                 n_bottleneck_blocks: int,
                  out_channels: int,
                  temb_dim: int,
                  healpix_emb_dim: int,
+                 doyemb_dim: int,
+                 posemb_dim: int,
                  edges_to_healpix: jax.Array,
                  edges_to_latlon: jax.Array,
                  key: jax.random.PRNGKey = jr.PRNGKey(0)):
@@ -500,107 +475,27 @@ class HealPIXUNet(eqx.Module):
             out_channels: Number of output channels
             temb_dim: Dimension of time embedding
         """
-        in_channels = input_size[0]
-        npix = 12 * nside**2
+        # Diffusion time embedding
         self.embedding = GaussianFourierProjection(temb_dim)
 
-        key, χ = jr.split(key)
-        self.to_healpix = BipartiteRemap(in_channels=in_channels,
-                                         out_channels=healpix_emb_dim,
-                                         edges=edges_to_healpix,
-                                         key=χ)
-
-        key, χ = jr.split(key)
-        self.to_latlon = BipartiteRemap(in_channels=out_channels,
-                                        out_channels=out_channels,
-                                        edges=edges_to_latlon,
-                                        key=χ)
-
-        key, χ = jr.split(key)
-        self.encoder = Encoder(input_size=(healpix_emb_dim, npix),
-                               n_filters=enc_filters,
-                               temb_dim=temb_dim,
-                               key=χ)
-
-        key, χ = jr.split(key)
-        bottleneck_size = npix // (4 ** len(enc_filters))
-        self.decoder = Decoder(input_size=(enc_filters[-1], bottleneck_size),
-                               n_filters=dec_filters,
-                               skip_filters=enc_filters[::-1],
-                               temb_dim=temb_dim,
-                               key=χ)
-
-        key, χ = jr.split(key)
-        self.output_layer = eqx.nn.Conv1d(in_channels=dec_filters[-1],
-                                          out_channels=out_channels,
-                                          kernel_size=1,
-                                          key=χ)
-
-    def __call__(self, x: jax.Array, t: jax.Array) -> jax.Array:
-        """Forward pass of the U-Net.
-
-        Args:
-            x: Input tensor of shape (channels, height, width)
-            t: Time values
-
-        Returns:
-            Output tensor of shape (out_channels, height, width)
-        """
-        # Map to healpix
-        c, nlat, nlon = x.shape
-        x = self.to_healpix(x.reshape(c, -1))
-
-        # Time embedding
-        temb = self.embedding(t)
-
-        # Encoder path with skip connections
-        latent_features = self.encoder(x, temb)
-
-        # Decoder path using skip connections
-        output = self.decoder(latent_features, temb)
-
-        # Final convolution
-        output = self.output_layer(output)
-
-        # Map back to latlon
-        output = self.to_latlon(output).reshape(-1, nlat, nlon)
-        return output
-
-
-class HealPIXUNetDoY(HealPIXUNet):
-    doy_embedding: DoYFourierProjection
-    pos_embedding: jax.Array
-    conv_embedding: HealPIXConvBlock
-    def __init__(self,
-                 input_size: Tuple[int, ...],
-                 nside: int,
-                 enc_filters: List[int],
-                 dec_filters: List[int],
-                 out_channels: int,
-                 temb_dim: int,
-                 doyemb_dim: int,
-                 healpix_emb_dim: int,
-                 edges_to_healpix: jax.Array,
-                 edges_to_latlon: jax.Array,
-                 key: jax.random.PRNGKey = jr.PRNGKey(0)):
-        in_channels = input_size[0]
-        npix = 12 * nside**2
-        self.embedding = GaussianFourierProjection(temb_dim)
+        # Day of year embedding
         self.doy_embedding = DoYFourierProjection(doyemb_dim)
 
+        # Embedding fusing layer
         key, χ = jr.split(key)
-        self.pos_embedding = jr.normal(χ, (16, npix)) * 0.02 
-      
-        key, χ = jr.split(key)
-        self.conv_embedding = HealPIXConvBlock(
-            in_channels=healpix_emb_dim + doyemb_dim,
-            out_channels=16,
-            kernel_size=3,
-            key=χ
-        )
+        self.conv_embedding = HealPIXConvBlock(in_channels=healpix_emb_dim + doyemb_dim,
+                                               out_channels=posemb_dim,
+                                               kernel_size=3,
+                                               key=χ)
 
+        # Positional embedding tensor
+        npix = 12 * nside**2
         key, χ = jr.split(key)
-        self.to_healpix = BipartiteRemap(in_channels=in_channels,
+        self.pos_embedding = jr.normal(χ, (posemb_dim, npix)) / jnp.sqrt(posemb_dim)
+
+        # LatLon <-> HealPIX remapping
+        key, χ = jr.split(key)
+        self.to_healpix = BipartiteRemap(in_channels=input_size[0],
                                          out_channels=healpix_emb_dim,
                                          edges=edges_to_healpix,
                                          key=χ)
@@ -611,22 +506,27 @@ class HealPIXUNetDoY(HealPIXUNet):
                                         edges=edges_to_latlon,
                                         key=χ)
 
+        # Encoder
         key, χ = jr.split(key)
-        self.encoder = Encoder(input_size=(16, npix),
-                               n_filters=enc_filters,
+        self.encoder = Encoder(input_size=(posemb_dim, npix),
+                               n_filters=n_filters,
+                               n_blocks=n_blocks,
                                temb_dim=temb_dim,
                                key=χ)
 
+        # Decoder
         key, χ = jr.split(key)
-        bottleneck_size = npix // (4 ** len(enc_filters))
-        self.decoder = Decoder(input_size=(enc_filters[-1], bottleneck_size),
-                               n_filters=dec_filters,
-                               skip_filters=enc_filters[::-1],
+        bottleneck_size = npix // (4 ** (len(n_filters) - 1))
+        skip_filters = [x[::-1] for x in self.encoder.skip_filters[::-1]]
+        self.decoder = Decoder(input_size=(n_filters[-1], bottleneck_size),
+                               skip_filters=skip_filters,
+                               n_bottleneck_blocks=n_bottleneck_blocks,
                                temb_dim=temb_dim,
                                key=χ)
 
+        # Output layer
         key, χ = jr.split(key)
-        self.output_layer = eqx.nn.Conv1d(in_channels=dec_filters[-1],
+        self.output_layer = eqx.nn.Conv1d(in_channels=n_filters[0],
                                           out_channels=out_channels,
                                           kernel_size=1,
                                           key=χ)
@@ -639,17 +539,20 @@ class HealPIXUNetDoY(HealPIXUNet):
         # DoY embedding
         doy_emb = self.doy_embedding(doy)
         doy_emb = jnp.broadcast_to(doy_emb[:, None], (doy_emb.shape[0], x.shape[1]))
+
+        # Fuse and add positional embedding
         x = jnp.concatenate([x, doy_emb], axis=0)
+        x = self.conv_embedding(x)
         x = x + self.pos_embedding
 
-        # Time embedding
+        # Diffusion time embedding
         temb = self.embedding(t)
 
         # Encoder path with skip connections
-        latent_features = self.encoder(x, temb)
+        features = self.encoder(x, temb)
 
         # Decoder path using skip connections
-        output = self.decoder(latent_features, temb)
+        output = self.decoder(features, temb)
 
         # Final convolution
         output = self.output_layer(output)
@@ -660,28 +563,48 @@ class HealPIXUNetDoY(HealPIXUNet):
 
 
 # # %%
+# input_size = (5, 96, 192)
+# out_channels = 4
+# n_filters = [64, 128, 128, 128]
+# n_blocks = [2, 2, 2, 2]
+# nside = 64
+# temb_dim = 128
+# doyemb_dim = 16
+# n_bottleneck_blocks = 1
+# key = jr.PRNGKey(0)
+# healpix_emb_dim = 5
+# posemb_dim = 64
 # edges_data = jnp.load("/Users/shahine/Documents/Research/MIT/code/repos/climemu/sandbox/edges.npz")
 # to_healpix = jnp.array(edges_data['to_healpix']).astype(jnp.int32)
 # to_latlon = jnp.array(edges_data['to_latlon']).astype(jnp.int32)
 
+# def print_parameter_count(model):
+#     leaves = eqx.filter(model, eqx.is_array)
+#     n_parameters = sum(jnp.size(x) for x in jax.tree.leaves(leaves))
+#     print(f"Number of parameters = {n_parameters/1e6:.2f}M \n")
 
-# # %%
-# unet = HealPIXUNetDoY(input_size=(3, 96, 192),
-#                       nside=16,
-#                       enc_filters=[8, 8, 8],
-#                       dec_filters=[8, 8, 8],
-#                       out_channels=3,
-#                       temb_dim=128,
-#                       doyemb_dim=16,
-#                       healpix_emb_dim=16,
+
+# bottleneck_size = (12 * nside**2) // (4 ** (len(n_filters) - 1))
+# print("Bottleneck size:", bottleneck_size)
+
+
+# %%
+# unet = HealPIXUNetDoY(input_size=input_size,
+#                       nside=nside,
+#                       n_filters=n_filters,
+#                       n_blocks=n_blocks,
+#                       n_bottleneck_blocks=n_bottleneck_blocks,
+#                       out_channels=out_channels,
+#                       temb_dim=temb_dim,
+#                       healpix_emb_dim=healpix_emb_dim,
+#                       doyemb_dim=doyemb_dim,
+#                       posemb_dim=posemb_dim,
 #                       edges_to_healpix=to_healpix,
 #                       edges_to_latlon=to_latlon,
 #                       key=jr.PRNGKey(0))
+# print_parameter_count(unet)
 
-# # %%
-# x = jnp.ones((3, 96, 192))
+# x = jnp.ones(input_size)
 # doy = jnp.array([100])
 # t = jnp.array([0.5])
-
-# # %%
 # y = unet(x, doy, t)
