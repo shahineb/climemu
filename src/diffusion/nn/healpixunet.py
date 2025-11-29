@@ -569,6 +569,7 @@ class HealPIXUNet(eqx.Module):
 
 class HealPIXUNetDoY(HealPIXUNet):
     doy_embedding: DoYFourierProjection
+    pos_embedding: jax.Array
     def __init__(self,
                  input_size: Tuple[int, ...],
                  nside: int,
@@ -585,6 +586,9 @@ class HealPIXUNetDoY(HealPIXUNet):
         npix = 12 * nside**2
         self.embedding = GaussianFourierProjection(temb_dim)
         self.doy_embedding = DoYFourierProjection(doyemb_dim)
+
+        key, χ = jr.split(key)
+        self.pos_embedding = jr.normal(key, (healpix_emb_dim + doyemb_dim, npix)) * 0.02
 
         key, χ = jr.split(key)
         self.to_healpix = BipartiteRemap(in_channels=in_channels,
@@ -628,6 +632,7 @@ class HealPIXUNetDoY(HealPIXUNet):
         doy_emb = self.doy_embedding(doy)
         doy_emb = jnp.broadcast_to(doy_emb[:, None], (doy_emb.shape[0], x.shape[1]))
         x = jnp.concatenate([x, doy_emb], axis=0)
+        x = x + self.pos_embedding
 
         # Time embedding
         temb = self.embedding(t)

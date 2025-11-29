@@ -55,9 +55,16 @@ def compute_moments(data, axis):
 config = Config()
 climatology, piControl_diffusion, piControl_cmip6 = load_data(config, in_memory=False)
 piControl_cmip6 = subsample_years(piControl_cmip6, piControl_diffusion.sizes['sample'])
+
+piControl_diffusion = piControl_diffusion + climatology
+piControl_cmip6 = piControl_cmip6 + climatology.sel(dayofyear=piControl_cmip6["time"].dt.dayofyear)
+
 with ProgressBar():
-    piControl_diffusion.load()
-    piControl_cmip6.load()
+    piControl_diffusion = piControl_diffusion.compute()
+    piControl_cmip6 = piControl_cmip6.compute()
+
+piControl_diffusion['pr'] = piControl_diffusion['pr'].clip(min=0)
+piControl_diffusion['hurs'] = piControl_diffusion['hurs'].clip(min=0, max=100)
 
 # Compute statistical moments for both datasets
 μ_diffusion, σ_diffusion, γ1_diffusion = compute_moments(piControl_diffusion, axis=["dayofyear", "sample"])

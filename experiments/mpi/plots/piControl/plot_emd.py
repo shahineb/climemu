@@ -76,9 +76,16 @@ def get_plot_data():
 config = Config()
 climatology, piControl_diffusion, piControl_cmip6 = load_data(config, in_memory=False)
 piControl_cmip6 = subsample_years(piControl_cmip6, piControl_diffusion.sizes['sample'])
+
+# piControl_diffusion = piControl_diffusion + climatology
+# piControl_cmip6 = piControl_cmip6 + climatology.sel(dayofyear=piControl_cmip6["time"].dt.dayofyear)
+
 with ProgressBar():
-    piControl_diffusion.load()
-    piControl_cmip6.load()
+    piControl_diffusion = piControl_diffusion.compute()
+    piControl_cmip6 = piControl_cmip6.compute()
+
+# piControl_diffusion['pr'] = piControl_diffusion['pr'].clip(min=0)
+# piControl_diffusion['hurs'] = piControl_diffusion['hurs'].clip(min=0, max=100)
 
 # Add seasonal coordinates
 piControl_diffusion = assign_month_and_season_from_doy(piControl_diffusion, dim="dayofyear")
