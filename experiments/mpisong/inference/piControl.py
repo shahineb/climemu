@@ -70,13 +70,14 @@ def load_model_and_data(config: Config):
     model = Song2020HealPIXUNet(
         input_size=(5, 96, 192),
         nside=64,
-        n_filters=[128, 256, 256, 256],
+        n_filters=[64, 128, 128, 128],
         n_blocks=[2, 2, 2, 2],
         out_channels=4,
         temb_dim=256,
         doyemb_dim=16,
-        posemb_dim=128,
+        posemb_dim=64,
         healpix_emb_dim=5,
+        n_bottleneck_blocks=1,
         edges_to_healpix=edges_to_healpix,
         edges_to_latlon=edges_to_latlon
     )

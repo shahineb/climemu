@@ -17,11 +17,12 @@ class ModelConfig:
     """
     input_size: tuple = (5, 96, 192)  # (channels, nlat, nlon)
     nside: int = 64  # HEALPix nside parameter
-    enc_filters: tuple = (64, 128, 256, 512, 1024)  # Filter counts for each encoder block
-    dec_filters: tuple = (512, 256, 128, 64, 64)  # Filter counts for each decoder block
+    enc_filters: tuple = (64, 128, 256, 256, 256)  # Filter counts for each encoder block
+    dec_filters: tuple = (256, 256, 128, 64, 64)  # Filter counts for each decoder block
     out_channels: int = 4  # Number of output channels
     temb_dim: int = 256  # Dimension for time embeddings
     doyemb_dim: int = 16  # Dimension for day-of-year embeddings
+    posemb_dim: int = 32  # Dimension for learned spatial non-stationarity
     healpix_emb_dim: int = 5  # Dimension for HEALPix embeddings
     context_channels: int = 1  # Number of context channels
     edges_path: str = os.path.join(CACHE_DIR, "edges.npz")  # Path to save/load HEALPix edges

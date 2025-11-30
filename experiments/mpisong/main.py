@@ -1,10 +1,10 @@
 import equinox as eqx
 
 from src.diffusion import Song2020HealPIXUNet, ContinuousVESchedule
-from experiments.mpi.config import Config
-from experiments.mpi.data import load_dataset, compute_normalization, estimate_sigma_max
-from experiments.mpi.trainer import train
-from experiments.mpi.utils import load_or_compute_edges, print_parameter_count
+from experiments.mpisong.config import Config
+from experiments.mpisong.data import load_dataset, compute_normalization, estimate_sigma_max
+from experiments.mpisong.trainer import train
+from experiments.mpisong.utils import load_or_compute_edges, print_parameter_count
 
 
 def main():
@@ -68,13 +68,14 @@ def main():
     model = Song2020HealPIXUNet(
         input_size=(5, 96, 192),
         nside=64,
-        n_filters=[128, 256, 256, 256],
+        n_filters=[64, 128, 128, 128],
         n_blocks=[2, 2, 2, 2],
         out_channels=4,
         temb_dim=256,
         doyemb_dim=16,
-        posemb_dim=128,
+        posemb_dim=64,
         healpix_emb_dim=5,
+        n_bottleneck_blocks=1,
         edges_to_healpix=edges_to_healpix,
         edges_to_latlon=edges_to_latlon
     )

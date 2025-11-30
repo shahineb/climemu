@@ -16,7 +16,8 @@ from .timeencoder import GaussianFourierProjection, DoYFourierProjection
 # from src.diffusion.nn.backbones import ConvNet
 # from src.diffusion.nn.modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
 # from src.diffusion.nn.timeencoder.gaussianfourier import GaussianFourierProjection, DoYFourierProjection
-
+from experiments.mpi.config import Config
+config = Config()
 
 class ResnetBlockDown(eqx.Module):
     """Downsampling residual block using facet-based convolutions.
@@ -445,6 +446,8 @@ class Decoder(ConvNet):
         return x
 
 
+
+
 class HealPIXUNet(eqx.Module):
     """Time-conditioned Residual U-Net architecture for lat-lon to HEALPix processing.
 
@@ -580,6 +583,7 @@ class HealPIXUNetDoY(HealPIXUNet):
                  temb_dim: int,
                  doyemb_dim: int,
                  healpix_emb_dim: int,
+                 posemb_dim: int,
                  edges_to_healpix: jax.Array,
                  edges_to_latlon: jax.Array,
                  key: jax.random.PRNGKey = jr.PRNGKey(0)):
@@ -589,15 +593,13 @@ class HealPIXUNetDoY(HealPIXUNet):
         self.doy_embedding = DoYFourierProjection(doyemb_dim)
 
         key, χ = jr.split(key)
-        self.pos_embedding = jr.normal(χ, (16, npix)) * 0.02 
+        self.pos_embedding = jr.normal(χ, (posemb_dim, npix)) / jnp.sqrt(posemb_dim)
       
         key, χ = jr.split(key)
-        self.conv_embedding = HealPIXConvBlock(
-            in_channels=healpix_emb_dim + doyemb_dim,
-            out_channels=16,
-            kernel_size=3,
-            key=χ
-        )
+        self.conv_embedding = HealPIXConvBlock(in_channels=healpix_emb_dim + doyemb_dim,
+                                               out_channels=posemb_dim,
+                                               kernel_size=3,
+                                               key=χ)
 
         key, χ = jr.split(key)
         self.to_healpix = BipartiteRemap(in_channels=in_channels,
@@ -612,7 +614,7 @@ class HealPIXUNetDoY(HealPIXUNet):
                                         key=χ)
 
         key, χ = jr.split(key)
-        self.encoder = Encoder(input_size=(16, npix),
+        self.encoder = Encoder(input_size=(posemb_dim, npix),
                                n_filters=enc_filters,
                                temb_dim=temb_dim,
                                key=χ)
@@ -640,6 +642,7 @@ class HealPIXUNetDoY(HealPIXUNet):
         doy_emb = self.doy_embedding(doy)
         doy_emb = jnp.broadcast_to(doy_emb[:, None], (doy_emb.shape[0], x.shape[1]))
         x = jnp.concatenate([x, doy_emb], axis=0)
+        x = self.conv_embedding(x)
         x = x + self.pos_embedding
 
         # Time embedding

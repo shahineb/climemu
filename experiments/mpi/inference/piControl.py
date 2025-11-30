@@ -75,6 +75,7 @@ def load_model_and_data(config: Config):
         out_channels=config.model.out_channels,
         temb_dim=config.model.temb_dim,
         doyemb_dim=config.model.doyemb_dim,
+        posemb_dim=config.model.posemb_dim,
         healpix_emb_dim=config.model.healpix_emb_dim,
         edges_to_healpix=edges_to_healpix,
         edges_to_latlon=edges_to_latlon
@@ -271,14 +272,14 @@ if __name__ == "__main__":
 # print(f"Predictions saved to {output_path}")
 
 
-def healpix_to_latlon(hp_map, n_lat=96, n_lon=192, nest=False):
-    # Lat/lon centers (in degrees)
-    lats = np.linspace(-89.5, 89.5, n_lat)
-    lons = np.linspace(-179.5, 179.5, n_lon)
-    lon2d, lat2d = np.meshgrid(lons, lats)
-    # Convert to theta, phi (Healpy convention)
-    theta = np.deg2rad(90 - lat2d)   # colatitude
-    phi   = np.deg2rad(lon2d)        # longitude
-    # Interpolate the healpix map onto the grid
-    grid = hp.get_interp_val(hp_map, theta, phi, nest=nest)
-    return lat2d, lon2d, grid
+# def healpix_to_latlon(hp_map, n_lat=96, n_lon=192, nest=False):
+#     # Lat/lon centers (in degrees)
+#     lats = np.linspace(-89.5, 89.5, n_lat)
+#     lons = np.linspace(-179.5, 179.5, n_lon)
+#     lon2d, lat2d = np.meshgrid(lons, lats)
+#     # Convert to theta, phi (Healpy convention)
+#     theta = np.deg2rad(90 - lat2d)   # colatitude
+#     phi   = np.deg2rad(lon2d)        # longitude
+#     # Interpolate the healpix map onto the grid
+#     grid = hp.get_interp_val(hp_map, theta, phi, nest=nest)
+#     return lat2d, lon2d, grid

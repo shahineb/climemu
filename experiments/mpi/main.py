@@ -73,6 +73,7 @@ def main():
         out_channels=config.model.out_channels,
         temb_dim=config.model.temb_dim,
         doyemb_dim=config.model.doyemb_dim,
+        posemb_dim=config.model.posemb_dim,
         healpix_emb_dim=config.model.healpix_emb_dim,
         edges_to_healpix=edges_to_healpix,
         edges_to_latlon=edges_to_latlon

@@ -16,14 +16,14 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.mpi.config import Config
-from experiments.mpi.plots.piControl.utils import load_data, VARIABLES, assign_month_and_season_from_doy, setup_figure, save_plot, myRdPu
+from experiments.mpisong.config import Config
+from experiments.mpisong.plots.piControl.utils import load_data, VARIABLES, assign_month_and_season_from_doy, setup_figure, save_plot, myRdPu
 
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-OUTPUT_DIR = 'experiments/mpi/plots/piControl/files'
+OUTPUT_DIR = 'experiments/mpisong/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 5.0
 HEIGHT_MULTIPLIER = 3.0
@@ -34,29 +34,6 @@ HSPACE = 0.05
 # =============================================================================
 # COMMON FUNCTIONS
 # =============================================================================
-
-def adaptive_quantiles(num_quantiles, p_min=0.00001, p_max=0.99999):
-    # Convert boundaries to logit space
-    logit_min = np.log(p_min / (1 - p_min))
-    logit_max = np.log(p_max / (1 - p_max))
-    
-    # Uniform spacing in logit space
-    logits = np.linspace(logit_min, logit_max, num=num_quantiles)
-    
-    # Convert back to probability space using the logistic function
-    quantiles = 1 / (1 + np.exp(-logits))
-    return quantiles
-
-def qq_plot(data1, data2, ax, num_quantiles=400):
-    data1 = np.sort(np.asarray(data1))
-    data2 = np.sort(np.asarray(data2))
-    quantiles = adaptive_quantiles(num_quantiles)
-    q1 = np.quantile(data1, quantiles)
-    q2 = np.quantile(data2, quantiles)
-    lims = [min(q1.min(), q2.min()), max(q1.max(), q2.max())]
-    ax.plot(lims, lims, 'k--', alpha=0.5)
-    ax.scatter(q1, q2, s=2)
-    return ax
 
 def subsample_years(ds, n_years):
     unique_years = np.unique(ds.time.dt.year.values)
@@ -96,7 +73,7 @@ domains = [north_america, south_america, europe, africa, asia, se_asia_oceania, 
 domain_names = ["North America", "South America", "Europe", "Africa", "Asia", "Southeast Asia & Oceania", "Poles", "Oceans"]
 
 # Create output directory if it doesn't exist
-output_dir = "experiments/mpi/plots/piControl/files/seasonal_cycle"
+output_dir = "experiments/mpisong/plots/piControl/files/seasonal_cycle"
 os.makedirs(output_dir, exist_ok=True)
 
 
