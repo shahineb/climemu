@@ -6,19 +6,19 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 
-from .backbones import ConvNet
-from .modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
-from .timeencoder import GaussianFourierProjection, DoYFourierProjection
+# from .backbones import ConvNet
+# from .modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
+# from .timeencoder import GaussianFourierProjection, DoYFourierProjection
 
-# import os, sys
-# base_dir = os.path.join(os.getcwd(), '../../..')
-# if base_dir not in sys.path:
-#     sys.path.append(base_dir)
-# from src.diffusion.nn.backbones import ConvNet
-# from src.diffusion.nn.modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
-# from src.diffusion.nn.timeencoder.gaussianfourier import GaussianFourierProjection, DoYFourierProjection
-# from experiments.mpi.config import Config
-# config = Config()
+import os, sys
+base_dir = os.path.join(os.getcwd(), '../../..')
+if base_dir not in sys.path:
+    sys.path.append(base_dir)
+from src.diffusion.nn.backbones import ConvNet
+from src.diffusion.nn.modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
+from src.diffusion.nn.timeencoder.gaussianfourier import GaussianFourierProjection, DoYFourierProjection
+from experiments.mpi.config import Config
+config = Config()
 
 
 # %%
@@ -387,13 +387,25 @@ class Decoder(ConvNet):
         """
         super().__init__(input_size=input_size)
         keys = jr.split(key, len(n_filters))
-        decoding_layers = [ResnetBlockUp(in_channels=self.input_size[0],
-                                         out_channels=n_filters[0],
-                                         temb_dim=temb_dim,
-                                         key=keys[0])]
-        for i in range(len(n_filters) - 2):
+        decoding_layers = []
+
+        χ1, χ2, χ3 = jr.split(keys[0], 3)
+        decoding_layers.append(ResnetBlock(in_channels=self.input_size[0],
+                                           out_channels=n_filters[0],
+                                           temb_dim=temb_dim,
+                                           key=χ1))
+        decoding_layers.append(ResnetBlock(in_channels=self.input_size[0],
+                                           out_channels=n_filters[0],
+                                           temb_dim=temb_dim,
+                                           key=χ2))
+        decoding_layers.append(ResnetBlock(in_channels=self.input_size[0],
+                                           out_channels=n_filters[0],
+                                           temb_dim=temb_dim,
+                                           key=χ3))
+
+        for i in range(len(n_filters) - 1):
             χ1, χ2, χ3, χ4 = jr.split(keys[i + 1], 4)
-            decoding_layers.append(ResnetBlockUp(in_channels=skip_filters[i + 1] + n_filters[i],
+            decoding_layers.append(ResnetBlockUp(in_channels=skip_filters[i] + n_filters[i],
                                                  out_channels=n_filters[i + 1],
                                                  temb_dim=temb_dim,
                                                  key=χ1))
@@ -409,23 +421,6 @@ class Decoder(ConvNet):
                                                out_channels=n_filters[i + 1],
                                                temb_dim=temb_dim,
                                                key=χ4))
-        χ1, χ2, χ3, χ4 = jr.split(keys[-1], 4)
-        decoding_layers += [ResnetBlock(in_channels=skip_filters[-1] + n_filters[-2],
-                                        out_channels=n_filters[-1],
-                                        temb_dim=temb_dim,
-                                        key=χ1)]
-        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
-                                        out_channels=n_filters[-1],
-                                        temb_dim=temb_dim,
-                                        key=χ2)]
-        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
-                                        out_channels=n_filters[-1],
-                                        temb_dim=temb_dim,
-                                        key=χ3)]
-        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
-                                        out_channels=n_filters[-1],
-                                        temb_dim=temb_dim,
-                                        key=χ4)]
         self.decoding_layers = eqx.nn.Sequential(decoding_layers)
 
     def __call__(self, features: List[jax.Array], temb: jax.Array, key: jax.random.PRNGKey = jr.PRNGKey(0)) -> jax.Array:
@@ -440,13 +435,14 @@ class Decoder(ConvNet):
         Returns:
             Output tensor with upsampled spatial dimensions
         """
-        x = features.pop()  # Start with bottleneck features
+        x = features[-1]
         for i, layer in enumerate(self.decoding_layers):
             key, χ = jr.split(key)
-            x = layer(x, temb, key=χ)
-            if i % 4 == 0 and len(features) > 0:
+            if i % 4 == 3 and len(features) > 0:
                 x = jnp.concatenate([x, features.pop()], axis=0)
+            x = layer(x, temb, key=χ)
         return x
+
 
 
 class HealPIXUNet(eqx.Module):
@@ -596,7 +592,6 @@ class HealPIXUNet(eqx.Module):
 # y = unet(x, t)
 
 # # %%
-
 
 class HealPIXUNetDoY(HealPIXUNet):
     doy_embedding: DoYFourierProjection
