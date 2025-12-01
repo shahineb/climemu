@@ -1,3 +1,4 @@
+# %%
 from typing import List, Tuple, Callable
 
 import equinox as eqx
@@ -16,9 +17,11 @@ from .timeencoder import GaussianFourierProjection, DoYFourierProjection
 # from src.diffusion.nn.backbones import ConvNet
 # from src.diffusion.nn.modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
 # from src.diffusion.nn.timeencoder.gaussianfourier import GaussianFourierProjection, DoYFourierProjection
-from experiments.mpi.config import Config
-config = Config()
+# from experiments.mpi.config import Config
+# config = Config()
 
+
+# %%
 class ResnetBlockDown(eqx.Module):
     """Downsampling residual block using facet-based convolutions.
     
@@ -394,15 +397,15 @@ class Decoder(ConvNet):
                                                  out_channels=n_filters[i + 1],
                                                  temb_dim=temb_dim,
                                                  key=χ1))
-            decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
+            decoding_layers.append(ResnetBlock(in_channels=skip_filters[i + 2] + n_filters[i + 1],
                                                out_channels=n_filters[i + 1],
                                                temb_dim=temb_dim,
                                                key=χ2))
-            decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
+            decoding_layers.append(ResnetBlock(in_channels=skip_filters[i + 2] + n_filters[i + 1],
                                                out_channels=n_filters[i + 1],
                                                temb_dim=temb_dim,
                                                key=χ3))
-            decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
+            decoding_layers.append(ResnetBlock(in_channels=skip_filters[i + 2] + n_filters[i + 1],
                                                out_channels=n_filters[i + 1],
                                                temb_dim=temb_dim,
                                                key=χ4))
@@ -411,15 +414,15 @@ class Decoder(ConvNet):
                                         out_channels=n_filters[-1],
                                         temb_dim=temb_dim,
                                         key=χ1)]
-        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
+        decoding_layers += [ResnetBlock(in_channels=skip_filters[-1] + n_filters[-1],
                                         out_channels=n_filters[-1],
                                         temb_dim=temb_dim,
                                         key=χ2)]
-        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
+        decoding_layers += [ResnetBlock(in_channels=skip_filters[-1] + n_filters[-1],
                                         out_channels=n_filters[-1],
                                         temb_dim=temb_dim,
                                         key=χ3)]
-        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
+        decoding_layers += [ResnetBlock(in_channels=skip_filters[-1] + n_filters[-1],
                                         out_channels=n_filters[-1],
                                         temb_dim=temb_dim,
                                         key=χ4)]
@@ -437,15 +440,16 @@ class Decoder(ConvNet):
         Returns:
             Output tensor with upsampled spatial dimensions
         """
-        x = features.pop()  # Start with bottleneck features
+        x = features.pop()
+        skip = features.pop()
         for i, layer in enumerate(self.decoding_layers):
             key, χ = jr.split(key)
             x = layer(x, temb, key=χ)
+            if i < len(self.decoding_layers) - 1:
+                x = jnp.concatenate([x, skip], axis=0)
             if i % 4 == 0 and len(features) > 0:
-                x = jnp.concatenate([x, features.pop()], axis=0)
+                skip = features.pop()
         return x
-
-
 
 
 class HealPIXUNet(eqx.Module):
@@ -570,6 +574,33 @@ class HealPIXUNet(eqx.Module):
         return output
 
 
+# # %%
+# import jax.numpy as jnp
+# edges_data = jnp.load("/Users/shahine/Documents/Research/MIT/code/repos/climemu/sandbox/edges.npz")
+# to_healpix = jnp.array(edges_data['to_healpix']).astype(jnp.int32)
+# to_latlon = jnp.array(edges_data['to_latlon']).astype(jnp.int32)
+
+# unet = HealPIXUNet(input_size=(3, 96, 192),
+#                     nside=16,
+#                     enc_filters=[64, 128, 256, 256, 256],
+#                     dec_filters=[256, 256, 128, 64, 64],
+#                     out_channels=3,
+#                     temb_dim=256,
+#                     healpix_emb_dim=5,
+#                     edges_to_healpix=to_healpix,
+#                     edges_to_latlon=to_latlon,
+#                     key=jr.PRNGKey(0))
+
+
+
+# # %%
+# x = jnp.ones((3, 96, 192))
+# t = jnp.array([0.5])
+# y = unet(x, t)
+
+# # %%
+
+
 class HealPIXUNetDoY(HealPIXUNet):
     doy_embedding: DoYFourierProjection
     pos_embedding: jax.Array
@@ -688,3 +719,5 @@ class HealPIXUNetDoY(HealPIXUNet):
 
 # # %%
 # y = unet(x, doy, t)
+
+# %%
