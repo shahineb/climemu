@@ -397,15 +397,15 @@ class Decoder(ConvNet):
                                                  out_channels=n_filters[i + 1],
                                                  temb_dim=temb_dim,
                                                  key=χ1))
-            decoding_layers.append(ResnetBlock(in_channels=skip_filters[i + 2] + n_filters[i + 1],
+            decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
                                                out_channels=n_filters[i + 1],
                                                temb_dim=temb_dim,
                                                key=χ2))
-            decoding_layers.append(ResnetBlock(in_channels=skip_filters[i + 2] + n_filters[i + 1],
+            decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
                                                out_channels=n_filters[i + 1],
                                                temb_dim=temb_dim,
                                                key=χ3))
-            decoding_layers.append(ResnetBlock(in_channels=skip_filters[i + 2] + n_filters[i + 1],
+            decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
                                                out_channels=n_filters[i + 1],
                                                temb_dim=temb_dim,
                                                key=χ4))
@@ -414,15 +414,15 @@ class Decoder(ConvNet):
                                         out_channels=n_filters[-1],
                                         temb_dim=temb_dim,
                                         key=χ1)]
-        decoding_layers += [ResnetBlock(in_channels=skip_filters[-1] + n_filters[-1],
+        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
                                         out_channels=n_filters[-1],
                                         temb_dim=temb_dim,
                                         key=χ2)]
-        decoding_layers += [ResnetBlock(in_channels=skip_filters[-1] + n_filters[-1],
+        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
                                         out_channels=n_filters[-1],
                                         temb_dim=temb_dim,
                                         key=χ3)]
-        decoding_layers += [ResnetBlock(in_channels=skip_filters[-1] + n_filters[-1],
+        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
                                         out_channels=n_filters[-1],
                                         temb_dim=temb_dim,
                                         key=χ4)]
@@ -440,15 +440,12 @@ class Decoder(ConvNet):
         Returns:
             Output tensor with upsampled spatial dimensions
         """
-        x = features.pop()
-        skip = features.pop()
+        x = features.pop()  # Start with bottleneck features
         for i, layer in enumerate(self.decoding_layers):
             key, χ = jr.split(key)
             x = layer(x, temb, key=χ)
-            if i < len(self.decoding_layers) - 1:
-                x = jnp.concatenate([x, skip], axis=0)
             if i % 4 == 0 and len(features) > 0:
-                skip = features.pop()
+                x = jnp.concatenate([x, features.pop()], axis=0)
         return x
 
 
