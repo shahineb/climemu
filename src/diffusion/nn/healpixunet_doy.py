@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import jax.random as jr
 
 from .backbones import ConvNet
-from .modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap
+from .modules import HealPIXFacetConvBlock, HealPIXFacetConvTransposeBlock, HealPIXConvBlock, BipartiteRemap, HealPIXAttention
 from .timeencoder import GaussianFourierProjection, DoYFourierProjection
 
 # import os, sys
