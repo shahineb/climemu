@@ -12,7 +12,8 @@ from .healpix import (
     HealPIXFacetConv,
     HealPIXFacetConvTranspose,
     HealPIXFacetConvBlock,
-    HealPIXFacetConvTransposeBlock
+    HealPIXFacetConvTransposeBlock,
+    HealPIXAttention
 )
 
 __all__ = [
