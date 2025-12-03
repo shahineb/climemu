@@ -22,7 +22,7 @@ class ModelConfig:
     out_channels: int = 4  # Number of output channels
     temb_dim: int = 256  # Dimension for time embeddings
     doyemb_dim: int = 16  # Dimension for day-of-year embeddings
-    posemb_dim: int = 32  # Dimension for learned spatial non-stationarity
+    posemb_dim: int = 16  # Dimension for learned spatial non-stationarity
     healpix_emb_dim: int = 5  # Dimension for HEALPix embeddings
     context_channels: int = 1  # Number of context channels
     edges_path: str = os.path.join(CACHE_DIR, "edges.npz")  # Path to save/load HEALPix edges
