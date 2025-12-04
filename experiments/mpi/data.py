@@ -1,4 +1,3 @@
-# %%
 import os
 from typing import Dict, List, Optional, Tuple, Any
 
@@ -301,8 +300,6 @@ def estimate_sigma_max(
         print(f"Saving σmax = {σmax} to {sigma_max_path}")
         np.save(sigma_max_path, σmax)
     return σmax
-
-
 
 
 # # %%

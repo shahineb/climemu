@@ -77,13 +77,6 @@ config = Config()
 climatology, piControl_diffusion, piControl_cmip6 = load_data(config, in_memory=False)
 piControl_cmip6 = subsample_years(piControl_cmip6, piControl_diffusion.sizes['sample'])
 
-# piControl_diffusion = piControl_diffusion + climatology
-# piControl_cmip6 = piControl_cmip6 + climatology.sel(dayofyear=piControl_cmip6["time"].dt.dayofyear)
-
-# pr = piControl_diffusion["pr"] + climatology["pr"]
-# pr = pr.where(piControl_diffusion["wet"] >= 0.5, 0)
-# piControl_diffusion["pr"] = pr - climatology["pr"]
-# piControl_diffusion = piControl_diffusion.drop_vars("wet")
 
 with ProgressBar():
     piControl_diffusion = piControl_diffusion.compute()

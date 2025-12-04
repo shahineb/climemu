@@ -1,4 +1,3 @@
-# %%
 from typing import Optional, Union, Tuple, List
 import numpy as np
 import xarray as xr
@@ -240,7 +239,7 @@ class PatternToDayCMIP6Data(Dataset):
     def predict_single_pattern(self, gmst: float) -> np.ndarray:
         pattern = self.β[:, 0] + self.β[:, 1] * gmst
         return pattern.reshape(self.cmip6data.nlat, self.cmip6data.nlon)
-    
+
     def __len__(self) -> int:
         return len(self.cmip6data)
 
@@ -264,7 +263,7 @@ class PatternToDayCMIP6Data(Dataset):
             return doy, pattern, cmip6_array
         else:
             raise ValueError(f"Invalid index type: {type(idx)}")
-        
+
     def __repr__(self) -> str:
         """Get string representation of the dataset.
 
@@ -272,31 +271,30 @@ class PatternToDayCMIP6Data(Dataset):
             str: String representation.
         """
         return f"PatternScalingtoDayCMIP6Data(\n gmst={self.gmst}, \n cmip6data={self.cmip6data}\n)"
-    
 
 
-# %%
+
 # import numpy as np
-# gmst = xr.open_datatree("../../experiments/mpi/cache/gmst.nc")
-# cmip6  = DayCMIP6Data(#root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
-#                       root="/home/shahineb/fs06/data/products/cmip6/processed",
+# import xarray as xr
+# from src.datasets import DayCMIP6Data
+
+# gmst = xr.open_datatree("experiments/mpi/cache/gmsttrain.nc")
+# cmip6  = DayCMIP6Data(root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
+#                     #   root="/home/shahineb/fs06/data/products/cmip6/processed",
 #                       model="MPI-ESM1-2-LR",
 #                       variables=["tas", "pr", "hurs", "sfcWind"],
 #                       experiments={
-#                           "piControl": ["r1i1p1f1"],
-#                           "ssp126": ["r1i1p1f1", "r2i1p1f1"]
+#                           "piControl": ["r1i1p1f1"]
 #                       })
-# β = np.load("../../experiments/mpi/cache/β.npy")
+# β = np.load("experiments/mpi/cache/β.npy")
 
 # dataset = PatternToDayCMIP6Data(gmst, cmip6, β)
 
 
-# %%
-#  %%
-# import time
-# start = time.perf_counter()
-# for i in range(100):
-#     doy, pattern, samples = dataset[i]
-# end = time.perf_counter()
-# print(f"Elapsed time: {end - start:.4f} seconds")
-# # %%
+# doy, pattern, cmip6_array = dataset[1]
+
+# fig = plt.figure()
+# im = plt.imshow(cmip6_array[1][::-1])
+# plt.colorbar(im)
+# plt.savefig('foo.jpg')
+# plt.close()

@@ -364,76 +364,6 @@ class Encoder(ConvNet):
         return features
 
 
-# class Decoder(ConvNet):
-#     """U-Net decoder with time-conditioned residual blocks.
-
-#     Attributes:
-#         decoding_layers: Sequential container of upsampling blocks
-#     """
-#     decoding_layers: eqx.nn.Sequential
-
-#     def __init__(self,
-#                  input_size: Tuple[int, ...],
-#                  n_filters: List[int],
-#                  skip_filters: List[int],
-#                  temb_dim: int,
-#                  key: jax.random.PRNGKey = jr.PRNGKey(0)):
-#         """Initialize the decoder.
-        
-#         Args:
-#             input_size: Input shape from encoder's deepest layer
-#             n_filters: List of channel numbers for each layer
-#             temb_dim: Dimension of time embedding
-#         """
-#         super().__init__(input_size=input_size)
-#         keys = jr.split(key, len(n_filters))
-#         decoding_layers = []
-#         decoding_layers.append(ResnetBlock(in_channels=self.input_size[0],
-#                                            out_channels=n_filters[0],
-#                                            temb_dim=temb_dim,
-#                                            key=keys[0]))
-
-#         for i in range(len(n_filters) - 1):
-#             χ1, χ2, χ3, χ4 = jr.split(keys[i + 1], 4)
-#             decoding_layers.append(ResnetBlockUp(in_channels=skip_filters[i] + n_filters[i],
-#                                                  out_channels=n_filters[i + 1],
-#                                                  temb_dim=temb_dim,
-#                                                  key=χ1))
-#             decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
-#                                                out_channels=n_filters[i + 1],
-#                                                temb_dim=temb_dim,
-#                                                key=χ2))
-#             decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
-#                                                out_channels=n_filters[i + 1],
-#                                                temb_dim=temb_dim,
-#                                                key=χ3))
-#             decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
-#                                                out_channels=n_filters[i + 1],
-#                                                temb_dim=temb_dim,
-#                                                key=χ4))
-#         self.decoding_layers = eqx.nn.Sequential(decoding_layers)
-
-#     def __call__(self, features: List[jax.Array], temb: jax.Array, key: jax.random.PRNGKey = jr.PRNGKey(0)) -> jax.Array:
-#         """Forward pass of the decoder.
-        
-#         Args:
-#             features: List of feature maps from encoder, ordered from 
-#                      highest resolution to lowest
-#             temb: Time embedding tensor
-#             key: PRNG key for stochastic operations
-        
-#         Returns:
-#             Output tensor with upsampled spatial dimensions
-#         """
-#         x = features[-1]
-#         for i, layer in enumerate(self.decoding_layers):
-#             key, χ = jr.split(key)
-#             if i % 4 == 1 and len(features) > 0:
-#                 x = jnp.concatenate([x, features.pop()], axis=0)
-#             x = layer(x, temb, key=χ)
-#         return x
-
-
 class Decoder(ConvNet):
     """U-Net decoder with time-conditioned residual blocks.
 
@@ -457,16 +387,25 @@ class Decoder(ConvNet):
         """
         super().__init__(input_size=input_size)
         keys = jr.split(key, len(n_filters))
-        decoding_layers = [ResnetBlockUp(in_channels=self.input_size[0],
-                                         out_channels=n_filters[0],
-                                         temb_dim=temb_dim,
-                                         key=keys[0])]
-        for i in range(len(n_filters) - 2):
+        decoding_layers = []
+        decoding_layers.append(ResnetBlock(in_channels=self.input_size[0],
+                                           out_channels=n_filters[0],
+                                           temb_dim=temb_dim,
+                                           key=keys[0]))
+
+        n_filters.append(n_filters[-1])
+        for i in range(len(n_filters) - 1):
             χ1, χ2, χ3, χ4 = jr.split(keys[i + 1], 4)
-            decoding_layers.append(ResnetBlockUp(in_channels=skip_filters[i + 1] + n_filters[i],
-                                                 out_channels=n_filters[i + 1],
-                                                 temb_dim=temb_dim,
-                                                 key=χ1))
+            if i == len(n_filters) - 2:
+                decoding_layers.append(ResnetBlock(in_channels=skip_filters[i] + n_filters[i],
+                                                   out_channels=n_filters[i + 1],
+                                                   temb_dim=temb_dim,
+                                                   key=χ1))
+            else:
+                decoding_layers.append(ResnetBlockUp(in_channels=skip_filters[i] + n_filters[i],
+                                                     out_channels=n_filters[i + 1],
+                                                     temb_dim=temb_dim,
+                                                     key=χ1))
             decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
                                                out_channels=n_filters[i + 1],
                                                temb_dim=temb_dim,
@@ -479,23 +418,6 @@ class Decoder(ConvNet):
                                                out_channels=n_filters[i + 1],
                                                temb_dim=temb_dim,
                                                key=χ4))
-        χ1, χ2, χ3, χ4 = jr.split(keys[-1], 4)
-        decoding_layers += [ResnetBlock(in_channels=skip_filters[-1] + n_filters[-2],
-                                        out_channels=n_filters[-1],
-                                        temb_dim=temb_dim,
-                                        key=χ1)]
-        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
-                                        out_channels=n_filters[-1],
-                                        temb_dim=temb_dim,
-                                        key=χ2)]
-        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
-                                        out_channels=n_filters[-1],
-                                        temb_dim=temb_dim,
-                                        key=χ3)]
-        decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
-                                        out_channels=n_filters[-1],
-                                        temb_dim=temb_dim,
-                                        key=χ4)]
         self.decoding_layers = eqx.nn.Sequential(decoding_layers)
 
     def __call__(self, features: List[jax.Array], temb: jax.Array, key: jax.random.PRNGKey = jr.PRNGKey(0)) -> jax.Array:
@@ -510,13 +432,98 @@ class Decoder(ConvNet):
         Returns:
             Output tensor with upsampled spatial dimensions
         """
-        x = features.pop()  # Start with bottleneck features
+        x = features[-1]
         for i, layer in enumerate(self.decoding_layers):
             key, χ = jr.split(key)
-            x = layer(x, temb, key=χ)
-            if i % 4 == 0 and len(features) > 0:
+            if i % 4 == 1 and len(features) > 0:
                 x = jnp.concatenate([x, features.pop()], axis=0)
+            x = layer(x, temb, key=χ)
         return x
+
+
+# class Decoder(ConvNet):
+#     """U-Net decoder with time-conditioned residual blocks.
+
+#     Attributes:
+#         decoding_layers: Sequential container of upsampling blocks
+#     """
+#     decoding_layers: eqx.nn.Sequential
+
+#     def __init__(self,
+#                  input_size: Tuple[int, ...],
+#                  n_filters: List[int],
+#                  skip_filters: List[int],
+#                  temb_dim: int,
+#                  key: jax.random.PRNGKey = jr.PRNGKey(0)):
+#         """Initialize the decoder.
+        
+#         Args:
+#             input_size: Input shape from encoder's deepest layer
+#             n_filters: List of channel numbers for each layer
+#             temb_dim: Dimension of time embedding
+#         """
+#         super().__init__(input_size=input_size)
+#         keys = jr.split(key, len(n_filters))
+#         decoding_layers = [ResnetBlockUp(in_channels=self.input_size[0],
+#                                          out_channels=n_filters[0],
+#                                          temb_dim=temb_dim,
+#                                          key=keys[0])]
+#         for i in range(len(n_filters) - 2):
+#             χ1, χ2, χ3, χ4 = jr.split(keys[i + 1], 4)
+#             decoding_layers.append(ResnetBlockUp(in_channels=skip_filters[i + 1] + n_filters[i],
+#                                                  out_channels=n_filters[i + 1],
+#                                                  temb_dim=temb_dim,
+#                                                  key=χ1))
+#             decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
+#                                                out_channels=n_filters[i + 1],
+#                                                temb_dim=temb_dim,
+#                                                key=χ2))
+#             decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
+#                                                out_channels=n_filters[i + 1],
+#                                                temb_dim=temb_dim,
+#                                                key=χ3))
+#             decoding_layers.append(ResnetBlock(in_channels=n_filters[i + 1],
+#                                                out_channels=n_filters[i + 1],
+#                                                temb_dim=temb_dim,
+#                                                key=χ4))
+#         χ1, χ2, χ3, χ4 = jr.split(keys[-1], 4)
+#         decoding_layers += [ResnetBlock(in_channels=skip_filters[-1] + n_filters[-2],
+#                                         out_channels=n_filters[-1],
+#                                         temb_dim=temb_dim,
+#                                         key=χ1)]
+#         decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
+#                                         out_channels=n_filters[-1],
+#                                         temb_dim=temb_dim,
+#                                         key=χ2)]
+#         decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
+#                                         out_channels=n_filters[-1],
+#                                         temb_dim=temb_dim,
+#                                         key=χ3)]
+#         decoding_layers += [ResnetBlock(in_channels=n_filters[-1],
+#                                         out_channels=n_filters[-1],
+#                                         temb_dim=temb_dim,
+#                                         key=χ4)]
+#         self.decoding_layers = eqx.nn.Sequential(decoding_layers)
+
+#     def __call__(self, features: List[jax.Array], temb: jax.Array, key: jax.random.PRNGKey = jr.PRNGKey(0)) -> jax.Array:
+#         """Forward pass of the decoder.
+        
+#         Args:
+#             features: List of feature maps from encoder, ordered from 
+#                      highest resolution to lowest
+#             temb: Time embedding tensor
+#             key: PRNG key for stochastic operations
+        
+#         Returns:
+#             Output tensor with upsampled spatial dimensions
+#         """
+#         x = features.pop()  # Start with bottleneck features
+#         for i, layer in enumerate(self.decoding_layers):
+#             key, χ = jr.split(key)
+#             x = layer(x, temb, key=χ)
+#             if i % 4 == 0 and len(features) > 0:
+#                 x = jnp.concatenate([x, features.pop()], axis=0)
+#         return x
 
 
 class HealPIXUNetDoY(eqx.Module):
