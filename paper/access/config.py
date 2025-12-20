@@ -34,7 +34,7 @@ class DataConfig:
 
     Specifies dataset paths, climate model, experiments, and pattern scaling parameters.
     """
-    root_dir: str = "/orcd/data/raffaele/001/shahineb/cmip6/processed"  # CMIP6 data directory
+    root_dir: str = "/orcd/data/raffaele/001/shahineb/products/cmip6/processed"  # CMIP6 data directory
     model_name: str = "ACCESS-ESM1-5"  # Climate model to use
     train_experiments: List[str] = ("piControl", "historical", "ssp126", "ssp585")  # Training experiments
     val_experiments: List[str] = ("ssp370",)  # Validation experiments
@@ -90,7 +90,7 @@ class SamplingConfig:
     n_samples: int = 50  # Number of samples to generate per test point
     batch_size: int = 2  # Batch size for evaluation
     random_seed: int = 2100  # Seed for reproducibility
-    output_dir: str = f"/orcd/data/raffaele/001/shahineb/jax-esm-emulation/paper/{EXPERIMENT_NAME}/outputs"  # Output directory for inference
+    output_dir: str = f"/orcd/data/raffaele/001/shahineb/emulated/climemu/paper/{EXPERIMENT_NAME}/outputs"  # Output directory for inference
 
 
 @dataclass

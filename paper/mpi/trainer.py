@@ -106,11 +106,28 @@ def train_epoch(
             _ = pbar.update(1)
   
             # Log metrics at specified intervals
-            if (state.step + 1) % config.training.log_interval == 0:
+            if (state.step + 1) & state.step == 0:
                 wandb.log({
-                    "Train Loss": running_loss, 
+                    "Train Loss": running_loss,
                     "Gradient norm": running_grad
                 }, step=state.step)
+
+                # Validation phase
+                val_loss = 0
+                with tqdm(total=n_val_steps, desc="Evaluation") as pbarval:        
+                    for batch_idx, batch in enumerate(val_loader):
+                        # Process batch and compute validation loss
+                        x = utils.process_batch(batch, μ, σ)
+                        val_value = denoising_batch_loss(
+                            state.ema_model, config.model.context_channels, schedule, x, χval
+                        )
+                        val_loss += val_value.item()
+                        # Update progress bar
+                        pbarval.set_description(f"Epoch {state.epoch + 1} | Val {round(val_loss / (batch_idx + 1), 2)}")
+                        pbarval.update(1)
+
+                # Log validation loss
+                wandb.log({"Validation Loss": val_loss / n_val_steps}, step=state.step)
    
             # Generate and log samples at specified intervals
             if (state.step + 1) % config.training.sample_interval == 0:
@@ -119,23 +136,6 @@ def train_epoch(
 
                 # Log samples and metrics to wandb
                 utils.log_samples(pred_samples, log_target_data, config.data.variables, state.step)
-
-    # Validation phase
-    val_loss = 0
-    with tqdm(total=n_val_steps, desc="Evaluation") as pbar:        
-        for batch_idx, batch in enumerate(val_loader):
-            # Process batch and compute validation loss
-            x = utils.process_batch(batch, μ, σ)
-            val_value = denoising_batch_loss(
-                state.ema_model, config.model.context_channels, schedule, x, χval
-            )
-            val_loss += val_value.item()
-            # Update progress bar
-            pbar.set_description(f"Epoch {state.epoch + 1} | Val {round(val_loss / (batch_idx + 1), 2)}")
-            pbar.update(1)
-
-    # Log validation loss
-    wandb.log({"Validation Loss": val_loss / n_val_steps}, step=state.step)
 
     # Checkpoint weights
     if (state.epoch + 1) % config.training.checkpoint_interval == 0:
