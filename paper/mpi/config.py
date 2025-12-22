@@ -36,15 +36,15 @@ class DataConfig:
     root_dir: str = "/orcd/data/raffaele/001/shahineb/products/cmip6/processed"  # CMIP6 data directory
     model_name: str = "MPI-ESM1-2-LR"  # Climate model to use
     train_experiments: List[str] = ("piControl", "historical", "ssp126", "ssp585")  # Training experiments
-    val_experiments: List[str] = ("ssp370",)  # Validation experiments
+    val_experiments: List[str] = ("1pctCO2",)  # Validation experiments
     variables: List[str] = ("tas", "pr", "hurs", "sfcWind")  # Climate variables
-    val_time_slice: Tuple[str, str] = ("2080-01", "2100-12")  # Time range for validation
+    val_time_slice: Tuple[str, str] = (None, None)  # Time range for validation
     pattern_scaling_path: str = os.path.join(CACHE_DIR, "β.npy")  # Path to save/load pattern scaling coefficients
     norm_stats_path: str = os.path.join(CACHE_DIR, "μ_σ.npz")  # Path to save/load normalization statistics
     in_memory: bool = True  # Whether to load full dataset into memory
     norm_max_samples: int = 10000  # Maximum number of samples to use for normalization
     sigma_max_path: str = os.path.join(CACHE_DIR, "σmax.npy")  # Path to save/load σmax
-    sigma_max_search_interval: List[int] = (0, 200)  # Interval in which we search for sigma max
+    sigma_max_search_interval: List[int] = (0, 400)  # Interval in which we search for sigma max
 
 
 @dataclass
@@ -54,12 +54,12 @@ class TrainingConfig:
     Defines hyperparameters, logging intervals, and output paths.
     """
     batch_size: int = 32  # Number of samples per batch
-    learning_rate: float = 3e-4  # Adam optimizer learning rate
+    learning_rate: float = 1e-4  # Adam optimizer learning rate
     ema_decay: float = 0.999  # Exponential moving average decay
-    epochs: int = 10  # Number of training epochs
-    log_interval: int = 20  # Steps between metric logging
-    queue_length: int = 30  # Length of sliding window for metrics
+    epochs: int = 15  # Number of training epochs
+    log_interval: int = 20  # Steps at which to log training loss
     sample_interval: int = 10000  # Steps between sample generation
+    queue_length: int = 30  # Length of sliding window for metrics
     sample_steps: int = 30  # Number of diffusion steps for sampling
     sample_count: int = 10  # Number of samples to generate
     random_seed: int = 0  # Seed for reproducibility

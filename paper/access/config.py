@@ -37,9 +37,9 @@ class DataConfig:
     root_dir: str = "/orcd/data/raffaele/001/shahineb/products/cmip6/processed"  # CMIP6 data directory
     model_name: str = "ACCESS-ESM1-5"  # Climate model to use
     train_experiments: List[str] = ("piControl", "historical", "ssp126", "ssp585")  # Training experiments
-    val_experiments: List[str] = ("ssp370",)  # Validation experiments
+    val_experiments: List[str] = ("1pctCO2",)  # Validation experiments
     variables: List[str] = ("tas", "pr", "hurs", "sfcWind")  # Climate variables
-    val_time_slice: Tuple[str, str] = ("2080-01", "2100-12")  # Time range for validation
+    val_time_slice: Tuple[str, str] = (None, None)  # Time range for validation
     pattern_scaling_path: str = os.path.join(CACHE_DIR, "β.npy")  # Path to save/load pattern scaling coefficients
     norm_stats_path: str = os.path.join(CACHE_DIR, "μ_σ.npz")  # Path to save/load normalization statistics
     in_memory: bool = True  # Whether to load full dataset into memory
@@ -55,9 +55,9 @@ class TrainingConfig:
     Defines hyperparameters, logging intervals, and output paths.
     """
     batch_size: int = 32  # Number of samples per batch
-    learning_rate: float = 3e-4  # Adam optimizer learning rate
+    learning_rate: float = 1e-4  # Adam optimizer learning rate
     ema_decay: float = 0.999  # Exponential moving average decay
-    epochs: int = 10  # Number of training epochs
+    epochs: int = 15  # Number of training epochs
     log_interval: int = 20  # Steps between metric logging
     queue_length: int = 30  # Length of sliding window for metrics
     sample_interval: int = 10000  # Steps between sample generation

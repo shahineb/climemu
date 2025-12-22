@@ -8,10 +8,10 @@ from matplotlib.gridspec import GridSpec
 from dask.diagnostics import ProgressBar
 
 # Module-level path configuration
-CLIMATOLOGY_ROOT = "/home/shahineb/data/cmip6/processed"
+CLIMATOLOGY_ROOT = "/home/shahineb/data/products/cmip6/processed"
 CLIMATOLOGY_MODEL = 'ACCESS-ESM1-5'
 CLIMATOLOGY_MEMBER = 'r1i1p1f1'
-RAW_CMIP6_ROOT = "/orcd/home/002/shahineb/data/cmip6/raw"
+RAW_CMIP6_ROOT = "/orcd/home/002/shahineb/data/products/cmip6/raw"
 
 
 def groupby_month_and_year(ds):

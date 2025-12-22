@@ -37,6 +37,30 @@ class TrainingState:
     epoch: int = 0
 
 
+def log_training_metrics(config, state, loss,  grad):
+    wandb.log({"Train Loss": loss, "Gradient norm": grad}, step=state.step)
+
+
+def log_validation_metrics(config, state, val_loader, μ, σ, schedule, χval):
+    # Validation phase
+    val_loss = 0
+    n_val_steps = len(val_loader)
+    with tqdm(total=n_val_steps, desc="Evaluation") as pbar:        
+        for batch_idx, batch in enumerate(val_loader):
+            # Process batch and compute validation loss
+            x = utils.process_batch(batch, μ, σ)
+            _, χval = jr.split(χval)
+            val_value = denoising_batch_loss(
+                state.ema_model, config.model.context_channels, schedule, x, χval
+            )
+            val_loss += val_value.item()
+            # Update progress bar
+            pbar.set_description(f"Epoch {state.epoch + 1} | Val {round(val_loss / (batch_idx + 1), 2)}")
+            pbar.update(1)
+    # Log validation loss
+    wandb.log({"Validation Loss": val_loss / n_val_steps}, step=state.step)
+
+
 def train_epoch(
     state: TrainingState,
     train_loader: DataLoader,
@@ -71,14 +95,13 @@ def train_epoch(
     # Initialize sliding windows for metrics
     loss_queue = deque(maxlen=config.training.queue_length)
     grad_queue = deque(maxlen=config.training.queue_length)
-    
+
     # Setup random keys for training and validation
-    χtrain, χval = jr.split(jr.PRNGKey(state.epoch + 1), 2)
-    
+    χtrain, χval = jr.split(jr.PRNGKey(state.epoch + 1))
+
     # Calculate steps per epoch
     n_train_steps = len(train_loader)
-    n_val_steps = len(val_loader)
-    
+
     # Training phase
     with tqdm(total=n_train_steps) as pbar:
         for batch in train_loader:
@@ -105,32 +128,15 @@ def train_epoch(
             pbar.set_description(f"Epoch {state.epoch + 1} | Loss {round(running_loss, 2)}")
             _ = pbar.update(1)
   
-            # Log metrics at specified intervals
-            if (state.step + 1) & state.step == 0:
-                wandb.log({
-                    "Train Loss": running_loss,
-                    "Gradient norm": running_grad
-                }, step=state.step)
+            # Log training metrics at specified intervals
+            if (state.step + 1) % config.training.log_interval == 0 or (state.step + 1) & state.step == 0:
+                log_training_metrics(config, state, running_loss, running_grad)
 
-                # Validation phase
-                val_loss = 0
-                with tqdm(total=n_val_steps, desc="Evaluation") as pbarval:        
-                    for batch_idx, batch in enumerate(val_loader):
-                        # Process batch and compute validation loss
-                        x = utils.process_batch(batch, μ, σ)
-                        val_value = denoising_batch_loss(
-                            state.ema_model, config.model.context_channels, schedule, x, χval
-                        )
-                        val_loss += val_value.item()
-                        # Update progress bar
-                        pbarval.set_description(f"Epoch {state.epoch + 1} | Val {round(val_loss / (batch_idx + 1), 2)}")
-                        pbarval.update(1)
+            # log validation metrics + samples at specified intervals
+            if (state.step + 1) % config.training.sample_interval == 0 or (state.step + 1) & state.step == 0:
+                log_validation_metrics(config, state, val_loader, μ, σ, schedule, χval)
+                _, χval = jr.split(χval)
 
-                # Log validation loss
-                wandb.log({"Validation Loss": val_loss / n_val_steps}, step=state.step)
-   
-            # Generate and log samples at specified intervals
-            if (state.step + 1) % config.training.sample_interval == 0:
                 # Generate samples from current model
                 pred_samples = log_sampler(model=ema_model, key=χtrain)
 
@@ -140,6 +146,10 @@ def train_epoch(
     # Checkpoint weights
     if (state.epoch + 1) % config.training.checkpoint_interval == 0:
         eqx.tree_serialise_leaves(config.training.checkpoint_filename, state.ema_model)
+
+    # Log final metrics
+    log_training_metrics(config, state, running_loss, running_grad)
+    log_validation_metrics(config, state, val_loader, μ, σ, schedule, χval)
 
     # Update epoch counter and return updated state
     return TrainingState(state.model, state.ema_model, state.opt_state, state.step, state.epoch + 1)
@@ -221,7 +231,7 @@ def train(
         state = train_epoch(
             state, train_loader, val_loader, schedule,
             μ, σ, log_sampler, log_target_data, config, optimizer
-        )
+        )    
     
     # Finish wandb run
     wandb.finish()
