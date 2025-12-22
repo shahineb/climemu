@@ -23,7 +23,7 @@ grad_df = {"MIROC6": pd.read_csv(os.path.join(root, 'miroc_grad.csv')),
 
 
 # %%
-fig, ax = plt.subplots(1, 2, figsize=(15, 5))
+fig, ax = plt.subplots(1, 2, figsize=(15, 5), gridspec_kw={'width_ratios': [1.5, 1]})
 
 train_df = train_losses['MIROC6']
 val_df = val_losses['MIROC6']
@@ -40,7 +40,7 @@ val_df = val_losses['ACCESS-ESM1-5']
 ax[0].plot(train_df['Step'], train_df.iloc[:, 1], label='ACCESS-ESM1-5 Training Loss', alpha=0.5, color='#CC79A7', zorder=0)
 ax[0].plot(val_df['Step'], val_df.iloc[:, 1], ls='--', label='ACCESS-ESM1-5 Validation Loss', color='#CC79A7')
 
-ax[0].legend(frameon=False, fontsize=11, loc='lower left')
+ax[0].legend(frameon=False, fontsize=12, loc='lower left')
 ax[0].set_yscale('log')
 ax[0].set_xscale('log')
 ax[0].set_xlabel("Training Steps", fontsize=14)
@@ -56,13 +56,13 @@ ax[1].plot(grad_df_mpi['Step'], grad_df_mpi.iloc[:, 1], label='MPI-ESM1-2-LR Gra
 grad_df_access = grad_df['ACCESS-ESM1-5']
 ax[1].plot(grad_df_access['Step'], grad_df_access.iloc[:, 1], label='ACCESS-ESM1-5 Gradient Norm', alpha=0.5, color='#CC79A7')
 
-ax[1].legend(frameon=False, fontsize=11)
+ax[1].legend(frameon=False, fontsize=12)
 ax[1].set_yscale('log')
 ax[1].set_xscale('log')
 ax[1].set_xlabel("Training Steps", fontsize=14)
 ax[1].set_ylabel("Gradient Norm", fontsize=14)
 ax[1].margins(0.01)
 
-plt.savefig("losses.eps", format="eps", bbox_inches="tight")
+plt.savefig("losses.jpg", dpi=300, bbox_inches="tight")
 
 # %%
