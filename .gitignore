@@ -183,6 +183,7 @@ cython_debug/
 *.eqx
 *.jpg
 *.png
+*.eps
 
 
 # VS Code
