@@ -159,12 +159,11 @@ gs = gridspec.GridSpec(
     wspace=wspace
 )
 
-# fig, ax = plt.subplots(1, 2, figsize=(12, 5), gridspec_kw={'width_ratios': [1, 1.5, 0.5]})
 
 ax = fig.add_subplot(gs[0, 0])
 ax.plot(years, ssp126_co2, label="SSP1-2.6", color="cornflowerblue", lw=4, alpha=0.8)
 ax.plot(years, ssp585_co2, label="SSP5-8.5", color="salmon", lw=4, alpha=0.8)
-ax.plot(years, cmip7_co2, label="M-Ext", color="k", lw=2, ls="--")
+ax.plot(years, cmip7_co2, label="M", color="k", lw=2, ls="--")
 ax.yaxis.tick_right()
 ax.yaxis.set_label_position("right")
 ax.set_ylabel("CO$_2$ emissions (GtCO$_2$/yr)", fontsize=14)
@@ -211,7 +210,7 @@ ax.clabel(cs, fmt=fmt, fontsize=9)
 legend_handles = [
     Line2D([0], [0], color="cornflowerblue",   lw=4, ls="-",  alpha=0.5, label="MPI-ESM1-2-LR SSP1-2.6"),
     Line2D([0], [0], color="salmon", lw=4, ls="-", alpha=0.5, label="MPI-ESM1-2-LR SSP5-8.5"),
-    Line2D([0], [0], color="k",  lw=1, ls="--",  label="Emulated M-Ext")
+    Line2D([0], [0], color="k",  lw=1, ls="--",  label="Emulated M")
 ]
 ax.legend(handles=legend_handles, frameon=False, fontsize=18, prop={"size": 14})
 ax.set_xlabel("Near-surface temperature (°C)", fontsize=16)
@@ -239,6 +238,6 @@ ax.add_geometries(
             zorder=10,
         )
 plt.tight_layout()
-plt.savefig("m-ext.jpg", dpi=300, bbox_inches="tight")
+plt.savefig("m.jpg", dpi=300, bbox_inches="tight")
 
 # %%
