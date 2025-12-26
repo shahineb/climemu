@@ -2,7 +2,6 @@ import os
 import numpy as np
 import xarray as xr
 import pandas as pd
-import seaborn as sns
 import regionmask
 from matplotlib.lines import Line2D
 from scipy.stats import gaussian_kde
@@ -61,11 +60,21 @@ ssp126_logpr = np.log1p(ssp126_pr)
 ssp585_logpr = np.log1p(ssp585_pr)
 cmip7_logpr = np.log1p(cmip7_pr)
 
+N = 10000
+np.random.seed(5)
+subset_idx = np.random.choice(len(ssp126_tas), N, replace=False)
+ssp126_tas, ssp126_logpr = ssp126_tas[subset_idx], ssp126_logpr[subset_idx]
+ssp585_tas, ssp585_logpr = ssp585_tas[subset_idx], ssp585_logpr[subset_idx]
+subset_idx = np.random.choice(len(cmip7_tas), N, replace=False)
+cmip7_tas, cmip7_logpr = cmip7_tas[subset_idx],  cmip7_logpr[subset_idx]
 
-# log-transform precipitation
-ssp126_logpr = np.log1p(ssp126_pr)
-ssp585_logpr = np.log1p(ssp585_pr)
-cmip7_logpr  = np.log1p(cmip7_pr)
+df = pd.DataFrame(data=np.stack([ssp126_tas, ssp126_logpr,
+                        ssp585_tas, ssp585_logpr,
+                        cmip7_tas, cmip7_logpr], axis=-1),
+                  columns=["ssp126_tas", "ssp126_logpr",
+                           "ssp585_tas", "ssp585_logpr",
+                           "cmip7_tas",  "cmip7_logpr"])
+df.to_csv("tas_pr.csv")
 
 
 tasmin = min(ssp126_tas.min(), ssp585_tas.min())
@@ -90,16 +99,9 @@ def kde_mass_contours(x, y, masses=(0.5, 0.75, 0.9)):
     return zz, levels
 
 
-
-
-N = 10000
-np.random.seed(5)
-subset_idx = np.random.choice(len(ssp126_tas), N, replace=False)
-zz1, zlev1 = kde_mass_contours(ssp126_tas[subset_idx], ssp126_logpr[subset_idx], levels)
-zz2, zlev2 = kde_mass_contours(ssp585_tas[subset_idx], ssp585_logpr[subset_idx], levels)
-
-subset_idx = np.random.choice(len(cmip7_tas), N, replace=False)
-zz3, zlev3 = kde_mass_contours(cmip7_tas[subset_idx],  cmip7_logpr[subset_idx],  levels)
+zz1, zlev1 = kde_mass_contours(ssp126_tas, ssp126_logpr, levels)
+zz2, zlev2 = kde_mass_contours(ssp585_tas, ssp585_logpr, levels)
+zz3, zlev3 = kde_mass_contours(cmip7_tas,  cmip7_logpr,  levels)
 
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 5))
