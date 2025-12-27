@@ -4,7 +4,6 @@ import xarray as xr
 import numpy as np
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from dask.diagnostics import ProgressBar
 from ...data import load_dataset
@@ -35,13 +34,12 @@ def load_data(config, in_memory=True):
     test_dataset = load_dataset(
         root=config.data.root_dir,
         model=config.data.model_name,
-        experiments=["ssp245"],
+        experiments=["ssp370"],
         variables=config.data.variables,
         in_memory=in_memory,
         external_β=β)
     
-    pred_path = os.path.join(config.sampling.output_dir, "emulated_ssp245.nc")
-    # pred_path = "/home/shahineb/data/emulated/jax-esm-emulation/paper/mpi/outputs/emulated_ssp245.nc"
+    pred_path = os.path.join(config.sampling.output_dir, "emulated_ssp370.nc")
     pred_samples = xr.open_dataset(pred_path, chunks={})
     if in_memory:
         pred_samples = casttofloat64(pred_samples).load()
@@ -70,10 +68,10 @@ def load_climatology(in_memory=False):
     climatology_pr = climatology_pr.assign_coords(month=('time', months)).swap_dims({'time': 'month'}).drop_vars('time') * 86400
 
     climatology_hurs = xr.open_dataset(hurs_path)
-    climatology_hurs = climatology_hurs.assign_coords(month=('time', months)).swap_dims({'time': 'month'}).drop_vars('time')
+    climatology_hurs = climatology_hurs.assign_coords(month=('time', months)).swap_dims({'time', 'month'}).drop_vars('time')
 
     climatology_sfcWind = xr.open_dataset(sfcwind_path)
-    climatology_sfcWind = climatology_sfcWind.assign_coords(month=('time', months)).swap_dims({'time': 'month'}).drop_vars('time')
+    climatology_sfcWind = climatology_sfcWind.assign_coords(month=('time', months)).swap_dims({'time', 'month'}).drop_vars('time')
 
     climatology = xr.merge([climatology_tas, climatology_pr, climatology_hurs, climatology_sfcWind])
 
@@ -85,7 +83,7 @@ def load_climatology(in_memory=False):
 
 
 def generate_patterns(test_dataset, time_mask=None):
-    gmst = test_dataset.gmst["ssp245"].tas
+    gmst = test_dataset.gmst["ssp370"].tas
     if time_mask is not None:
         gmst = gmst.sel(time=time_mask)
     months = gmst.time.dt.month.values
@@ -98,9 +96,19 @@ def generate_patterns(test_dataset, time_mask=None):
     return patterns
 
 
-# =============================================================================
-# PLOTTING UTILITIES
-# =============================================================================
+def create_subtitle(fig, grid, title):
+    """Create a subtitle for a set of subplots.
+    
+    Args:
+        fig: Matplotlib figure object
+        grid: GridSpec object for positioning
+        title: Text to display as subtitle
+    """
+    row = fig.add_subplot(grid)
+    row.set_title(f'{title}\n\n', fontweight='semibold')
+    row.set_frame_on(False)
+    row.axis('off')
+
 
 def setup_figure(width_ratios, height_ratios, width_multiplier=1.0, height_multiplier=1.0, wspace=0.05, hspace=0.05):
     """Setup figure with GridSpec and return figure and gridspec objects.
@@ -184,24 +192,12 @@ def add_seasonal_coords(data):
     return data.assign_coords(season=("month", seasons))
 
 
-def emphasize_mid_cmap(cmap="RdPu", strength=4.0, N=256):
-    base = plt.get_cmap(cmap, N)
-    if strength <= 0:
-        return base
-    x = np.linspace(0., 1., N)
-    x_warp = 0.5 + 0.5 * np.tanh(strength * (x - 0.5)) / np.tanh(strength / 2)
-    return mcolors.LinearSegmentedColormap.from_list(f"{cmap}_mid", base(x_warp))
-
-myRdPu = emphasize_mid_cmap(cmap="RdPu", strength=4.0)
-
-# =============================================================================
-# VARIABLE METADATA
-# =============================================================================
+# Variable metadata
 VARIABLES = {
     'tas': {
         'channel': 0,
         'name': 'Temperature',
-        'unit': '°C',
+        'unit': 'K',
         'cmap': 'coolwarm',
         'color': 'cornflowerblue'
     },
@@ -221,7 +217,7 @@ VARIABLES = {
     },
     'sfcWind': {
         'channel': 3,
-        'name': 'Wind speed',
+        'name': 'Windspeed',
         'unit': 'm/s',
         'cmap': 'PRGn',
         'color': 'cornflowerblue'
