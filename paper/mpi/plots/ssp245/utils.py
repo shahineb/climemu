@@ -40,7 +40,8 @@ def load_data(config, in_memory=True):
         in_memory=in_memory,
         external_β=β)
     
-    pred_path = os.path.join(config.sampling.output_dir, "emulated_ssp245.nc")
+    # pred_path = os.path.join(config.sampling.output_dir, "emulated_ssp245.nc")
+    pred_path = "/home/shahineb/data/emulated/jax-esm-emulation/paper/mpi/outputs/emulated_ssp245.nc"
     pred_samples = xr.open_dataset(pred_path, chunks={})
     if in_memory:
         pred_samples = casttofloat64(pred_samples).load()
@@ -200,7 +201,7 @@ VARIABLES = {
     'tas': {
         'channel': 0,
         'name': 'Temperature',
-        'unit': 'K',
+        'unit': '°C',
         'cmap': 'coolwarm',
         'color': 'cornflowerblue'
     },
