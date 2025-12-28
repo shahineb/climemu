@@ -7,12 +7,11 @@ import regionmask
 from matplotlib.lines import Line2D
 from scipy.stats import gaussian_kde
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import MaxNLocator
 from src.datasets import CMIP6Data
 import cartopy.crs as ccrs
-
+import seaborn as sns
 
 # %%
 
@@ -108,6 +107,10 @@ ssp585_logpr = df["ssp585_logpr"].values
 cmip7_tas = df["cmip7_tas"].values
 cmip7_logpr = df["cmip7_logpr"].values
 
+# ssp126_logpr = np.log(np.expm1(ssp126_logpr).clip(min=1e-3))
+# ssp585_logpr = np.log(np.expm1(ssp585_logpr).clip(min=1e-3))
+# cmip7_logpr = np.log(np.expm1(cmip7_logpr).clip(min=1e-3))
+
 
 # %%
 tasmin = min(ssp126_tas.min(), ssp585_tas.min())
@@ -137,16 +140,16 @@ zz3, zlev3 = kde_mass_contours(cmip7_tas,  cmip7_logpr,  levels)
 
 
 # %%
-height_ratios = [1]
-width_ratios = [1, 0.3, 1.5, 0.2, 0.5]
+height_ratios = [0.2, 1]
+width_ratios = [1, 0.3, 1.5, 0.2, 0.01, 0.5]
 nrow = len(height_ratios)
 ncol = len(width_ratios)
 nroweff = sum(height_ratios)
 ncoleff = sum(width_ratios)
 width_multiplier = 5.
 height_multiplier = 5.0
-hspace = 0.01
-wspace = 0.01
+hspace = 0.0
+wspace = 0.0
 
 fig = plt.figure(figsize=(width_multiplier * ncoleff, height_multiplier * nroweff))
 gs = gridspec.GridSpec(
@@ -160,27 +163,10 @@ gs = gridspec.GridSpec(
 )
 
 
-ax = fig.add_subplot(gs[0, 0])
-ax.plot(years, ssp126_co2, label="SSP1-2.6", color="cornflowerblue", lw=4, alpha=0.8)
-ax.plot(years, ssp585_co2, label="SSP5-8.5", color="salmon", lw=4, alpha=0.8)
-ax.plot(years, cmip7_co2, label="M", color="k", lw=2, ls="--")
-ax.yaxis.tick_right()
-ax.yaxis.set_label_position("right")
-ax.set_ylabel("CO$_2$ emissions (GtCO$_2$/yr)", fontsize=14)
-ax.legend(frameon=False, prop={"size": 14, "weight": "bold"})
-ax.margins(0.01)
-ax.spines['top'].set_visible(False)
-ax.spines["left"].set_visible(False)
-ax.spines["right"].set_visible(True)
-ax.tick_params(axis="both", which="major", labelsize=14) 
-ax.set_xlim(1950, 2105)
-ax.set_xticks([1900, 2000, 2100])
-ax.set_title("(a)", fontsize=16, weight="bold")
+ax = fig.add_subplot(gs[1, 2])
 
-
-ax = fig.add_subplot(gs[0, 2])
 cs = ax.contourf(
-    XX, np.expm1(YY), zz1,
+    YY, XX, zz1,
     levels=20,
     cmap="Blues",
     alpha=1.,
@@ -188,7 +174,7 @@ cs = ax.contourf(
 )
 
 cs = ax.contourf(
-    XX, np.expm1(YY), zz2,
+    YY, XX, zz2,
     levels=20,
     cmap="Reds",
     alpha=0.4,
@@ -196,7 +182,7 @@ cs = ax.contourf(
 )
 
 cs = ax.contour(
-    XX, np.expm1(YY), zz3,
+    YY, XX, zz3,
     levels=zlev3,
     colors="k",
     linewidths=1,
@@ -213,21 +199,49 @@ legend_handles = [
     Line2D([0], [0], color="k",  lw=1, ls="--",  label="Emulated M")
 ]
 ax.legend(handles=legend_handles, frameon=False, fontsize=18, prop={"size": 14})
-ax.set_xlabel("Near-surface temperature (°C)", fontsize=16)
-ax.set_ylabel("Precipitation (mm/day)", fontsize=16)
-ax.set_ylim(0, 18)
-ax.set_xlim(20, 40)
-ax.yaxis.tick_right()
-ax.yaxis.set_label_position("right")
+ax.set_ylabel("Near-surface temperature (°C)", fontsize=16)
+ax.set_xlabel("Precipitation (mm/day)", fontsize=16)
+ax.set_ylim(22, 39)
+ax.set_xlim(-4, 3)
 ax.spines['top'].set_visible(False)
-ax.spines["left"].set_visible(False)
+ax.spines["left"].set_visible(True)
 ax.spines["right"].set_visible(True)
 ax.xaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
 ax.yaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
-ax.set_title("(b)", fontsize=16, weight="bold")
 
 
-ax = fig.add_subplot(gs[0, 4], projection=ccrs.Robinson())
+ax_top = fig.add_subplot(gs[0, 2], sharex=ax)
+ax_right = fig.add_subplot(gs[1, 3], sharey=ax)
+x = XX[0, :]
+y = YY[:, 0]
+mx1 = np.trapezoid(zz1, y, axis=0)
+my1 = np.trapezoid(zz1, x, axis=1)
+
+mx2 = np.trapezoid(zz2, y, axis=0)
+my2 = np.trapezoid(zz2, x, axis=1)
+
+mx3 = np.trapezoid(zz3, y, axis=0)
+my3 = np.trapezoid(zz3, x, axis=1)
+
+ax_top.plot(y, my1, color="cornflowerblue", lw=1, alpha=0.5)
+ax_top.plot(y, my2, color="tomato", lw=1, alpha=0.5)
+ax_top.plot(y, my3, color="k", lw=1, ls="--")
+# ax_top.set_ylim(0, 3)
+# ax_top.set_yscale('log')
+
+ax_top.set_title("(b)", fontsize=16, weight="bold")
+
+
+ax_right.plot(mx1, x, color="cornflowerblue", lw=1, alpha=0.5)
+ax_right.plot(mx2, x, color="tomato", lw=1, alpha=0.5)
+ax_right.plot(mx3, x, color="k", lw=1, ls="--")
+
+
+ax_top.axis("off")
+ax_right.axis("off")
+
+
+ax = fig.add_subplot(gs[1, -1], projection=ccrs.Robinson())
 ax.coastlines(linewidth=0.2, color="black")
 ax.add_geometries(
             [ar6[10].polygon],
@@ -237,7 +251,174 @@ ax.add_geometries(
             linewidth=2,
             zorder=10,
         )
-plt.tight_layout()
-plt.savefig("m.jpg", dpi=300, bbox_inches="tight")
+# plt.show()
+plt.savefig("m-tp.jpg", dpi=300, bbox_inches="tight")
+# plt.savefig("m-co2.eps", format="eps", bbox_inches="tight")
+
+
+
+
+# # %%
+# height_ratios = [0.2, 1]
+# width_ratios = [1, 0.3, 1.5, 0.2, 0.01, 0.5]
+# nrow = len(height_ratios)
+# ncol = len(width_ratios)
+# nroweff = sum(height_ratios)
+# ncoleff = sum(width_ratios)
+# width_multiplier = 5.
+# height_multiplier = 5.0
+# hspace = 0.0
+# wspace = 0.0
+
+# fig = plt.figure(figsize=(width_multiplier * ncoleff, height_multiplier * nroweff))
+# gs = gridspec.GridSpec(
+#     nrows=nrow,
+#     ncols=ncol,
+#     figure=fig,
+#     width_ratios=width_ratios,
+#     height_ratios=height_ratios,
+#     hspace=hspace,
+#     wspace=wspace
+# )
+
+
+# # ax = fig.add_subplot(gs[1, 0])
+# # ax.plot(years, ssp126_co2, label="SSP1-2.6", color="cornflowerblue", lw=4, alpha=0.8)
+# # ax.plot(years, ssp585_co2, label="SSP5-8.5", color="salmon", lw=4, alpha=0.8)
+# # ax.plot(years, cmip7_co2, label="M", color="k", lw=2, ls="--")
+# # ax.yaxis.tick_right()
+# # ax.yaxis.set_label_position("right")
+# # ax.set_ylabel("CO$_2$ emissions (GtCO$_2$/yr)", fontsize=14)
+# # ax.legend(frameon=False, prop={"size": 14, "weight": "bold"})
+# # ax.margins(0.01)
+# # ax.spines['top'].set_visible(False)
+# # ax.spines["left"].set_visible(False)
+# # ax.spines["right"].set_visible(True)
+# # ax.tick_params(axis="both", which="major", labelsize=14) 
+# # ax.set_xlim(1950, 2105)
+# # ax.set_xticks([1900, 2000, 2100])
+# # ax.set_title("(a)", fontsize=16, weight="bold")
+
+
+# ax = fig.add_subplot(gs[1, 2])
+
+# cs = ax.contourf(
+#     np.expm1(YY), XX, zz1,
+#     levels=20,
+#     cmap="Blues",
+#     alpha=1.,
+#     zorder=0,
+# )
+
+# cs = ax.contourf(
+#     np.expm1(YY), XX, zz2,
+#     levels=20,
+#     cmap="Reds",
+#     alpha=0.4,
+#     zorder=0,
+# )
+
+# cs = ax.contour(
+#     np.expm1(YY), XX, zz3,
+#     levels=zlev3,
+#     colors="k",
+#     linewidths=1,
+#     linestyles="--",
+#     zorder=5,
+# )
+# fmt = {lev: f"{int(p*100)}%" for lev, p in zip(zlev3, levels)}
+# ax.clabel(cs, fmt=fmt, fontsize=9)
+
+
+# legend_handles = [
+#     Line2D([0], [0], color="cornflowerblue",   lw=4, ls="-",  alpha=0.5, label="MPI-ESM1-2-LR SSP1-2.6"),
+#     Line2D([0], [0], color="salmon", lw=4, ls="-", alpha=0.5, label="MPI-ESM1-2-LR SSP5-8.5"),
+#     Line2D([0], [0], color="k",  lw=1, ls="--",  label="Emulated M")
+# ]
+# ax.legend(handles=legend_handles, frameon=False, fontsize=18, prop={"size": 14})
+# ax.set_ylabel("Near-surface temperature (°C)", fontsize=16)
+# ax.set_xlabel("Precipitation (mm/day)", fontsize=16)
+# ax.set_ylim(22, 39)
+# ax.set_xlim(0, 18)
+# ax.spines['top'].set_visible(False)
+# ax.spines["left"].set_visible(True)
+# ax.spines["right"].set_visible(True)
+# ax.xaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
+# ax.yaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
+
+
+# ax_top = fig.add_subplot(gs[0, 2], sharex=ax)
+# ax_right = fig.add_subplot(gs[1, 3], sharey=ax)
+# x = XX[0, :]
+# y_log = YY[:, 0]
+# y = np.expm1(y_log)
+# mx1 = np.trapezoid(zz1, y, axis=0)
+# my1 = np.trapezoid(zz1, x, axis=1)
+
+# mx2 = np.trapezoid(zz2, y, axis=0)
+# my2 = np.trapezoid(zz2, x, axis=1)
+
+# mx3 = np.trapezoid(zz3, y, axis=0)
+# my3 = np.trapezoid(zz3, x, axis=1)
+
+# # ax_top.plot(y, my1_phys, color="cornflowerblue", lw=1, alpha=0.5)
+# # ax_top.plot(y, my2_phys, color="tomato", lw=1, alpha=0.5)
+# # ax_top.plot(y, my3_phys, color="k", lw=1, ls="--")
+# # ax_top.set_ylim(0, 3)
+# # ax_top.set_yscale('log')
+# sns.kdeplot(
+#     x=np.expm1(ssp126_logpr),
+#     ax=ax_top,
+#     color="cornflowerblue",
+#     lw=1,
+#     alpha=0.5,
+#     fill=False,
+#     clip=(0, None),
+# )
+# sns.kdeplot(
+#     x=np.expm1(ssp585_logpr),
+#     ax=ax_top,
+#     color="tomato",
+#     lw=1,
+#     alpha=0.5,
+#     fill=False,
+#     clip=(0, None),
+# )
+# sns.kdeplot(
+#     x=np.expm1(cmip7_logpr),
+#     ax=ax_top,
+#     color="k",
+#     lw=1,
+#     ls="--",
+#     fill=False,
+#     clip=(0, None),
+# )
+
+# ax_top.set_title("(b)", fontsize=16, weight="bold")
+
+
+# ax_right.plot(mx1, x, color="cornflowerblue", lw=1, alpha=0.5)
+# ax_right.plot(mx2, x, color="tomato", lw=1, alpha=0.5)
+# ax_right.plot(mx3, x, color="k", lw=1, ls="--")
+
+
+# ax_top.axis("off")
+# ax_right.axis("off")
+
+
+
+# ax = fig.add_subplot(gs[1, -1], projection=ccrs.Robinson())
+# ax.coastlines(linewidth=0.2, color="black")
+# ax.add_geometries(
+#             [ar6[10].polygon],
+#             crs=ccrs.PlateCarree(),
+#             edgecolor="red",
+#             facecolor="none",
+#             linewidth=2,
+#             zorder=10,
+#         )
+# # plt.show()
+# plt.savefig("m-tp.jpg", dpi=300, bbox_inches="tight")
+# # plt.savefig("m-co2.eps", format="eps", bbox_inches="tight")
 
 # %%
