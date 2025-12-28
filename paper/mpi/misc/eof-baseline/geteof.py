@@ -52,16 +52,16 @@ def stack_dicts(dicts, time, lat, lon, axis=0):
 ssp245 = xr.open_dataset("mpi_ssp245_gmst.nc").tas.values
 
 # %%
-# n_total = 12 * len(ssp245)
-# with tqdm(total=n_total) as pbar:
-#     all_data = []
-#     for year_idx in range(len(ssp245)):
-#         year_data = []
-#         for month in range(1, 13):
-#             gmst = ssp245[year_idx]
-#             data = generate_eof_data(gmst=gmst, month=month)
-#             all_data.append(data)
-#             _ = pbar.update(1)
+n_total = 12 * len(ssp245)
+with tqdm(total=n_total) as pbar:
+    all_data = []
+    for year_idx in range(len(ssp245)):
+        year_data = []
+        for month in range(1, 13):
+            gmst = ssp245[year_idx]
+            data = generate_eof_data(gmst=gmst, month=month)
+            all_data.append(data)
+            _ = pbar.update(1)
 
 # %%
 time = np.array(
