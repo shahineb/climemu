@@ -1,3 +1,4 @@
+# %%
 import os
 import numpy as np
 import pandas as pd
@@ -15,6 +16,7 @@ REGION_IDX = 10
 
 def load_plot_data():
     """Load CMIP6 and CMIP7 emulated data."""
+    # df = pd.read_csv(os.path.join(base_dir, "data/tas_pr.csv"))
     df = pd.read_csv(os.path.join(base_dir, "outputs/tas_pr_2100_region.csv"))
     ssp126_tas = df["ssp126_tas"].values
     ssp126_logpr = df["ssp126_logpr"].values
@@ -35,7 +37,6 @@ def setup_kde_grid(ssp126_tas, ssp585_tas, ssp126_logpr, ssp585_logpr, grid_size
     ylog_grid = np.linspace(logprmin, logprmax, grid_size)
     
     return np.meshgrid(x_grid, ylog_grid)
-
 
 def kde_mass_contours(x, y, XX, YY, masses=(0.5, 0.75, 0.9)):
     """Compute KDE and return density and mass contour levels."""
@@ -71,9 +72,9 @@ def create_figure():
 
 def plot_main_contours(ax, YY, XX, zz1, zz2, zz3, zlev3, levels):
     """Plot main contour plot with SSP126, SSP585, and CMIP7 data."""
-    ax.contourf(YY, XX, zz1, levels=20, cmap="Blues", alpha=1.0, zorder=0)
-    ax.contourf(YY, XX, zz2, levels=20, cmap="Reds", alpha=0.4, zorder=0)
-    cs = ax.contour(YY, XX, zz3, levels=zlev3, colors="k", linewidths=1, 
+    ax.contourf(np.expm1(YY), XX, zz1, levels=20, cmap="Blues", alpha=1.0, zorder=0)
+    ax.contourf(np.expm1(YY), XX, zz2, levels=20, cmap="Reds", alpha=0.4, zorder=0)
+    cs = ax.contour(np.expm1(YY), XX, zz3, levels=zlev3, colors="k", linewidths=1, 
                     linestyles="--", zorder=5)
     fmt = {lev: f"{int(p*100)}%" for lev, p in zip(zlev3, levels)}
     ax.clabel(cs, fmt=fmt, fontsize=9)
@@ -81,7 +82,7 @@ def plot_main_contours(ax, YY, XX, zz1, zz2, zz3, zlev3, levels):
     legend_handles = [
         Line2D([0], [0], color="cornflowerblue", lw=4, ls="-", alpha=0.5, 
                label="MPI-ESM1-2-LR SSP1-2.6"),
-        Line2D([0], [0], color="salmon", lw=4, ls="-", alpha=0.5, 
+        Line2D([0], [0], color="salmon", lw=4, ls="-", alpha=0.5,
                label="MPI-ESM1-2-LR SSP5-8.5"),
         Line2D([0], [0], color="k", lw=1, ls="--", label="Emulated M")
     ]
@@ -89,7 +90,7 @@ def plot_main_contours(ax, YY, XX, zz1, zz2, zz3, zlev3, levels):
     ax.set_ylabel("Near-surface temperature (°C)", fontsize=16)
     ax.set_xlabel("Precipitation (mm/day)", fontsize=16)
     ax.set_ylim(22, 39)
-    ax.set_xlim(0, 3)
+    ax.set_xlim(0, 18)
     ax.spines['top'].set_visible(False)
     ax.spines["left"].set_visible(True)
     ax.spines["right"].set_visible(True)
@@ -132,6 +133,37 @@ def plot_region_map(ax, region):
         zorder=10,
     )
 
+# %%
+ssp126_tas, ssp126_logpr, ssp585_tas, ssp585_logpr, cmip7_tas, cmip7_logpr = load_plot_data()
+XX, YY = setup_kde_grid(ssp126_tas, ssp585_tas, ssp126_logpr, ssp585_logpr)
+levels = [0.05, 0.25, 0.5, 0.75, 0.95]
+zz1, _ = kde_mass_contours(ssp126_tas, ssp126_logpr, XX, YY, levels)
+zz2, _ = kde_mass_contours(ssp585_tas, ssp585_logpr, XX, YY, levels)
+zz3, zlev3 = kde_mass_contours(cmip7_tas, cmip7_logpr, XX, YY, levels)
+
+
+# %%
+# Create plot
+fig, gs = create_figure()
+
+# Main contour plot
+ax = fig.add_subplot(gs[1, 2])
+plot_main_contours(ax, YY, XX, zz1, zz2, zz3, zlev3, levels)
+
+# # Marginal plots
+# ax_top = fig.add_subplot(gs[0, 2], sharex=ax)
+# ax_right = fig.add_subplot(gs[1, 3], sharey=ax)
+# plot_marginals(ax_top, ax_right, YY, XX, zz1, zz2, zz3)
+
+# # Region map
+# ax_map = fig.add_subplot(gs[1, -1], projection=ccrs.Robinson())
+# ar6 = regionmask.defined_regions.ar6.all
+# region = ar6[REGION_IDX]
+# plot_region_map(ax_map, region)
+    
+
+
+# %%
 
 def main():
     """Main plotting function."""
@@ -167,5 +199,9 @@ def main():
     plt.savefig(os.path.join(base_dir, "outputs/m-tp.jpg"), dpi=300, bbox_inches="tight")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
+
+# %%
+main()
+# %%
