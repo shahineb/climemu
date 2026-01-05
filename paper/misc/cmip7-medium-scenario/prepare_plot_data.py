@@ -1,8 +1,14 @@
 import os
+import sys
 import numpy as np
 import pandas as pd
 import xarray as xr
 import regionmask
+
+base_dir = os.path.join(os.getcwd())
+if base_dir not in sys.path:
+    sys.path.append(base_dir)
+
 from src.datasets import CMIP6Data
 
 # Constants
@@ -11,7 +17,7 @@ CLIMATOLOGY_ROOT = "/home/shahineb/data/products/cmip6/processed"
 CLIMATOLOGY_MODEL = 'MPI-ESM1-2-LR'
 CLIMATOLOGY_MEMBER = 'r1i1p1f1'
 CMIP6_ROOT = "/orcd/data/raffaele/001/shahineb/products/cmip6/processed"
-CMIP7_DATA_PATH = "/home/shahineb/data/emulated/climemu-private/cmip7_medium-extension/2100.nc"
+CMIP7_DATA_PATH = "/home/shahineb/data/emulated/climemu-private/mpi/cmip7_medium/2100.nc"
 REGION_IDX = 10
 SUBSET_SIZE = 10000
 RANDOM_SEED = 5
@@ -35,7 +41,7 @@ def load_climatology():
 
 def load_cmip_data(climatology):
     """Load CMIP6 and CMIP7 data."""
-    cmip6data = CMIP6Data(CMIP6_ROOT, CLIMATOLOGY_MODEL, ["ssp126", "ssp585"], 
+    cmip6data = CMIP6Data(CMIP6_ROOT, CLIMATOLOGY_MODEL, ["ssp126", "ssp585"],
                           ["tas", "pr"], {"time": slice("2100-01", "2100-12")})
     cmip6data.load()
     
@@ -98,7 +104,6 @@ def prepare_data(ssp126, ssp585, cmip7):
                                "cmip7_tas",  "cmip7_logpr"])
     output_path = os.path.join(base_dir, "outputs", "tas_pr_2100_region.csv")
     df.to_csv(output_path)
-
 
 
 def main():

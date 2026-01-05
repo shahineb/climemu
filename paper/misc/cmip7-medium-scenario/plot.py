@@ -89,7 +89,7 @@ def plot_main_contours(ax, YY, XX, zz1, zz2, zz3, zlev3, levels):
     ax.set_ylabel("Near-surface temperature (°C)", fontsize=16)
     ax.set_xlabel("Precipitation (mm/day)", fontsize=16)
     ax.set_ylim(22, 39)
-    ax.set_xlim(-4, 3)
+    ax.set_xlim(0, 3)
     ax.spines['top'].set_visible(False)
     ax.spines["left"].set_visible(True)
     ax.spines["right"].set_visible(True)
@@ -160,7 +160,7 @@ def main():
     # Region map
     ax_map = fig.add_subplot(gs[1, -1], projection=ccrs.Robinson())
     ar6 = regionmask.defined_regions.ar6.all
-    region = ar6[[REGION_IDX]]
+    region = ar6[REGION_IDX]
     plot_region_map(ax_map, region)
     
     # Save

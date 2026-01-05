@@ -18,7 +18,7 @@ EBM_CONFIG = os.path.join(base_dir, 'data/4xCO2_cummins_ebm3.csv')
 DEFAULT_SCENARIO = 'ssp245'
 VOLCANIC_FORCING = os.path.join(base_dir, 'data/volcanic_ERF_monthly_175001-201912.csv')
 EMISSIONS_FILE = os.path.join(base_dir, 'data/extensions_1750-2500.csv')
-OUTPUT_DIR = "/orcd/data/raffaele/001/shahineb/emulated/climemu/mpi/cmip7_medium"
+OUTPUT_DIR = "/orcd/data/raffaele/001/shahineb/emulated/climemu-private/mpi/cmip7_medium"
 
 
 def get_ebm_configs(esms):
@@ -125,20 +125,20 @@ def emulate_year(emulator, gmst, year, ncall, output_dir, pbar=None):
     file_path = os.path.join(output_dir, f"{year}.nc")
     if os.path.exists(file_path):
         return
-    
+
     month_samples = []
     for month in range(1, 13):
         samples_calls = []
-        for call in range(ncall):
+        for _ in range(ncall):
             if pbar:
-                pbar.set_description(f"{month}/{year} - {call + 1}")
+                pbar.set_description(f"{month}/{year}")
             sample = emulator(gmst, month, xarray=True)
             samples_calls.append(sample)
             if pbar:
-                pbar.update(1)
+                _ = pbar.update(1)
         samples_calls = xr.concat(samples_calls, dim="member")
         month_samples.append(samples_calls)
-    
+
     result = xr.concat(month_samples, dim=xr.DataArray(range(1, 13), dims="month", name="month"))
     result.to_netcdf(file_path)
     del result
@@ -169,7 +169,8 @@ def main():
             if os.path.exists(file_path):
                 pbar.update(12 * ncall)
             else:
-                emulate_year(emulator, gmst, year, ncall, OUTPUT_DIR, pbar)
+                ΔT = gmst.sel(year=year).values.squeeze()
+                emulate_year(emulator, ΔT, year, ncall, OUTPUT_DIR, pbar)
 
 
 if __name__ == "__main__":
