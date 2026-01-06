@@ -1,4 +1,3 @@
-# %%
 import os
 import numpy as np
 import pandas as pd
@@ -19,11 +18,11 @@ def load_plot_data():
     """Load CMIP6 and CMIP7 emulated data."""
     df = pd.read_csv(os.path.join(base_dir, "outputs/tas_pr_2100_region.csv"))
     ssp126_tas = df["ssp126_tas"].values
-    ssp126_logpr = df["ssp126_logpr"].values
+    ssp126_logpr = df["ssp126_logpr"].values.clip(min=-1)
     ssp585_tas = df["ssp585_tas"].values
-    ssp585_logpr = df["ssp585_logpr"].values
+    ssp585_logpr = df["ssp585_logpr"].values.clip(min=-1)
     cmip7_tas = df["cmip7_tas"].values
-    cmip7_logpr = df["cmip7_logpr"].values
+    cmip7_logpr = df["cmip7_logpr"].values.clip(min=-1)
     return ssp126_tas, ssp126_logpr, ssp585_tas, ssp585_logpr, cmip7_tas, cmip7_logpr
 
 def load_emission_data():
@@ -51,11 +50,9 @@ def setup_kde_grid(ssp126_tas, ssp585_tas, ssp126_logpr, ssp585_logpr, grid_size
     tasmax = max(ssp126_tas.max(), ssp585_tas.max())
     logprmin = min(ssp126_logpr.min(), ssp585_logpr.min())
     logprmax = max(ssp126_logpr.max(), ssp585_logpr.max())
-    
     x_grid = np.linspace(tasmin, tasmax, grid_size)
-    ylog_grid = np.linspace(logprmin, logprmax, grid_size)
-    
-    return np.meshgrid(x_grid, ylog_grid)
+    y_grid = np.linspace(logprmin, logprmax, grid_size)
+    return np.meshgrid(x_grid, y_grid)
 
 def kde_mass_contours(x, y, XX, YY, masses=(0.5, 0.75, 0.9)):
     """Compute KDE and return density and mass contour levels."""
@@ -91,9 +88,9 @@ def create_figure():
 
 def plot_main_contours(ax, YY, XX, zz1, zz2, zz3, zlev3, levels):
     """Plot main contour plot with SSP126, SSP585, and CMIP7 data."""
-    ax.contourf(np.expm1(YY), XX, zz2, levels=20, cmap="Reds", alpha=0.6, zorder=1)
-    ax.contourf(np.expm1(YY), XX, zz1, levels=20, cmap="Blues", alpha=0.4, zorder=2)
-    cs = ax.contour(np.expm1(YY), XX, zz3, levels=zlev3, colors="k", linewidths=1, 
+    ax.contourf(YY, XX, zz2, levels=20, cmap="Reds", alpha=0.6, zorder=1)
+    ax.contourf(YY, XX, zz1, levels=20, cmap="Blues", alpha=0.4, zorder=2)
+    cs = ax.contour(YY, XX, zz3, levels=zlev3, colors="k", linewidths=1, 
                     linestyles="--", zorder=5)
     fmt = {lev: f"{int(p*100)}%" for lev, p in zip(zlev3, levels)}
     ax.clabel(cs, fmt=fmt, fontsize=9)
@@ -109,7 +106,8 @@ def plot_main_contours(ax, YY, XX, zz1, zz2, zz3, zlev3, levels):
     ax.set_ylabel("Near-surface temperature (°C)", fontsize=16)
     ax.set_xlabel("Precipitation (mm/day)", fontsize=16)
     ax.set_ylim(22, 39)
-    ax.set_xlim(0, 18)
+    ax.set_xlim(-1, 1.27)
+    ax.set_xticklabels([0.1, 1, 10])
     ax.spines['top'].set_visible(False)
     ax.spines["left"].set_visible(True)
     ax.spines["right"].set_visible(True)
@@ -120,7 +118,7 @@ def plot_main_contours(ax, YY, XX, zz1, zz2, zz3, zlev3, levels):
 def plot_marginals(ax_top, ax_right, YY, XX, zz1, zz2, zz3):
     """Plot marginal distributions."""
     x = XX[0, :]
-    y = np.expm1(YY)[:, 0]
+    y = YY[:, 0]
     mx1 = np.trapezoid(zz1, y, axis=0)
     my1 = np.trapezoid(zz1, x, axis=1)
     mx2 = np.trapezoid(zz2, y, axis=0)
@@ -154,7 +152,7 @@ def plot_region_map(ax, region):
 
 
 def plot_emissions(years, ssp126_co2, ssp585_co2, cmip7_co2):
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(5, 4))
     ax.plot(years, ssp126_co2, label="SSP1-2.6", color="cornflowerblue", lw=4, alpha=0.8)
     ax.plot(years, ssp585_co2, label="SSP5-8.5", color="salmon", lw=4, alpha=0.8)
     ax.plot(years, cmip7_co2, label="M", color="k", lw=2, ls="--")
@@ -171,6 +169,8 @@ def plot_emissions(years, ssp126_co2, ssp585_co2, cmip7_co2):
     ax.set_xticks([1900, 2000, 2100])
     ax.set_title("(a)", fontsize=16, weight="bold")
     plt.savefig(os.path.join(base_dir, "outputs/co2.jpg"), dpi=300, bbox_inches="tight")
+
+
 
 
 def main():
@@ -211,50 +211,5 @@ def main():
     plt.savefig(os.path.join(base_dir, "outputs/m-tp.jpg"), dpi=300, bbox_inches="tight")
 
 
-# if __name__ == "__main__":
-#     main()
-
-# %%
-main()
-
-
-# %%
-import seaborn as sns
-ssp126_tas, ssp126_logpr, ssp585_tas, ssp585_logpr, cmip7_tas, cmip7_logpr = load_plot_data()
-
-
-# %%
-x = np.expm1(ssp126_logpr).clip(min=1e-6)
-p0 = np.mean(x <= 0)
-xp = x
-yp = np.log10(xp)
-kde_y = gaussian_kde(yp)
-
-grid = np.linspace(1e-3, xp.max(), 600)
-dens_pos = kde_y(np.log10(grid)) / grid
-dens = (1 - p0) * dens_pos
-
-
-# %%
-fig, ax = plt.subplots(figsize=(7, 4))
-
-# Histogram on positives only (density=True => integrates to 1 over positives)
-# ax.hist(xp, bins=40, density=True, alpha=0.35, edgecolor="none")
-
-# Mixed-model density on x>0 (this integrates to 1-p0 over (0,inf))
-ax.plot(grid, dens, lw=2)
-
-# # Spike at 0 to represent point mass p0
-# ymax = max(ax.get_ylim()[1], dens.max() * 1.05)
-# ax.vlines(0, 0, ymax * min(1.0, 5 * p0), lw=3)  # scaled spike for visibility
-# ax.annotate(f"p0={p0:.2f}", xy=(0, ymax * 0.9), xytext=(0.02 * grid.max(), ymax * 0.9))
-
-ax.set_xlabel("precip")
-ax.set_ylabel("density (continuous part) + spike at 0")
-ax.set_xlim(0, 1)
-# ax.set_xscale("log")
-
-
-plt.tight_layout()
-plt.show()
-# %%
+if __name__ == "__main__":
+    main()
