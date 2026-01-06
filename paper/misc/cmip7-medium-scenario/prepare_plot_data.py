@@ -82,9 +82,9 @@ def prepare_data(ssp126, ssp585, cmip7):
     cmip7_pr = cmip7_pr.clip(min=0)
     
     # Convert to log space
-    ssp126_logpr = np.log1p(ssp126_pr)
-    ssp585_logpr = np.log1p(ssp585_pr)
-    cmip7_logpr = np.log1p(cmip7_pr)
+    ssp126_logpr = np.log10(ssp126_pr.clip(min=1e-6))
+    ssp585_logpr = np.log10(ssp585_pr.clip(min=1e-6))
+    cmip7_logpr = np.log10(cmip7_pr.clip(min=1e-6))
     
     # Subsample for plotting
     np.random.seed(RANDOM_SEED)
