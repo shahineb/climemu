@@ -39,10 +39,11 @@ test_dataset, pred_samples, _, __ = load_data(config, in_memory=False)
 target_data = test_dataset['ssp245'].ds
 time, lat, lon = target_data.time, target_data.lat, target_data.lon
 
-eof_tas_mean = xr.open_dataarray("/home/shahineb/code/repos/climemu-private/eof/eof_emulator_T_del.nc").isel(lon=slice(None, -1))
-eof_tas_stddev = xr.open_dataarray("/home/shahineb/code/repos/climemu-private/eof/eof_emulator_T_std_dev.nc").isel(lon=slice(None, -1))
-eof_pr_mean = xr.open_dataarray("/home/shahineb/code/repos/climemu-private/eof/eof_emulator_precip_del.nc").isel(lon=slice(None, -1)) * 86400
-eof_pr_stddev = xr.open_dataarray("/home/shahineb/code/repos/climemu-private/eof/eof_emulator_precip_std_dev.nc").isel(lon=slice(None, -1)) * 86400
+base_dir = "/home/shahineb/code/repos/climemu-private/paper/misc/baseline-benchmark/eof-baseline"
+eof_tas_mean = xr.open_dataarray("/home/shahineb/code/repos/climemu-private/paper/misc/baseline-benchmark/eof-baseline/eof_emulator_T_del.nc").isel(lon=slice(None, -1))
+eof_tas_stddev = xr.open_dataarray("/home/shahineb/code/repos/climemu-private/paper/misc/baseline-benchmark/eof-baseline/eof_emulator_T_std_dev.nc").isel(lon=slice(None, -1))
+eof_pr_mean = xr.open_dataarray("/home/shahineb/code/repos/climemu-private/paper/misc/baseline-benchmark/eof-baseline/eof_emulator_precip_del.nc").isel(lon=slice(None, -1)) * 86400
+eof_pr_stddev = xr.open_dataarray("/home/shahineb/code/repos/climemu-private/paper/misc/baseline-benchmark/eof-baseline/eof_emulator_precip_std_dev.nc").isel(lon=slice(None, -1)) * 86400
 eof_mean = xr.Dataset({"tas": eof_tas_mean, "pr": eof_pr_mean})
 eof_stddev = xr.Dataset({"tas": eof_tas_stddev, "pr": eof_pr_stddev})
 
