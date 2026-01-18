@@ -11,16 +11,16 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from paper.mpi_no_overfitting.config import Config
-from paper.mpi_no_overfitting.plots.piControl.utils import VARIABLES, load_data, setup_figure, save_plot, wrap_lon, add_seasonal_coords
-from paper.mpi_no_overfitting.data import load_dataset
+from paper.misc.mpi_no_overfitting.config import Config
+from paper.misc.mpi_no_overfitting.plots.piControl.utils import VARIABLES, load_data, setup_figure, save_plot, wrap_lon, add_seasonal_coords
+from paper.misc.mpi_no_overfitting.data import load_dataset
 from paper.mpi.config import Config as Configmpi
 from paper.mpi.plots.piControl.utils import load_data as load_data_mpi
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-OUTPUT_DIR = 'paper/mpi_no_overfitting/plots/piControl/files'
+OUTPUT_DIR = 'paper/misc/mpi_no_overfitting/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 5.0
 HEIGHT_MULTIPLIER = 3.0
