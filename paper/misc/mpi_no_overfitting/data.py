@@ -1,12 +1,14 @@
 import os
-from typing import Dict, List, Optional, Tuple, Any
 import copy
+from typing import Dict, List, Optional, Tuple, Any
+
+import numpy as np
 import jax.numpy as jnp
 import jax.random as jr
+
+from functools import partial
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Subset
-from functools import partial
-import numpy as np
 
 from src.utils import arrays
 from src.datasets import CMIP6Data, PatternToCMIP6Dataset
@@ -73,7 +75,6 @@ def load_dataset(
         # Compute coefficients but don't save them
         dataset = PatternToCMIP6Dataset(gmst, cmip6data, in_memory=in_memory)
         dataset.fit()
-
     return dataset
 
 
@@ -123,7 +124,7 @@ def compute_normalization(
     key = jr.PRNGKey(seed)
     indices = jr.permutation(key, dataset_size)[:subset_size].tolist()
     dataset_subset = Subset(piControl_dataset, indices)
-
+    
     # Create a dataloader for the subset
     dummy_loader = DataLoader(
         dataset_subset, 
@@ -131,25 +132,18 @@ def compute_normalization(
         shuffle=False,
         collate_fn=numpy_collate
     )
-
+    
     # Process each batch and collect results
     x = []
     for batch in tqdm(dummy_loader, desc=f"Computing μ, σ  (using {subset_size} samples)"):
         sample_shape = batch[-1].shape
         sample_shape = (1 + sample_shape[1], sample_shape[2], sample_shape[3])
         x.append(utils.process_batch(batch, jnp.zeros(sample_shape), jnp.ones(sample_shape)))
-
-    # Compute mean across all batches
+    
+    # Compute mean and stddev across all batches
     x = jnp.concatenate(x)
     μ = x.mean(axis=0)
-
-    # Compute stddev with shrinkage estimator to prevent σ~0
-    N = subset_size
-    λ = N / 10
-    σ2 = x.var(axis=0, ddof=1)
-    σ2glob = x.var(axis=(0, 2, 3), ddof=1)[:, None, None]
-    σ2shrink = ((N - 1) * σ2 + λ * σ2glob) / (N - 1 + λ)
-    σ = jnp.sqrt(σ2shrink)
+    σ = x.std(axis=0)
 
     # Save statistics if path is provided
     if norm_stats_path:

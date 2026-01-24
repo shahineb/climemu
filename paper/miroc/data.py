@@ -196,12 +196,34 @@ def estimate_sigma_max(
         print(f"Loading σmax = {σmax} from {sigma_max_path}")
         return σmax
     
+    # Estimate the leading principal component
+    dataset_size = len(dataset)
+    subset_size = min(10000, dataset_size)
+    key = jr.PRNGKey(42)
+    indices = jr.permutation(key, dataset_size)[:subset_size].tolist()
+    dataset_subset = Subset(dataset, indices)
+    dummy_loader = DataLoader(dataset_subset, batch_size=10, collate_fn=numpy_collate)
+    X = []
+    for batch in tqdm(dummy_loader, desc=f"Loading {subset_size} samples"):
+        X.append(utils.process_batch(batch, μ, σ)[:, :-ctx_size])
+    X = jnp.concatenate(X)
+    μX = X.mean(axis=0)
+    Xc = X - μX
+    wlat = jnp.cos(jnp.deg2rad(dataset.cmip6data.lat))
+    G = jnp.einsum("nchw,h,mchw->nm", Xc, wlat, Xc)
+    Σ2, U = jnp.linalg.eigh(G)
+    u1 = U[:, -1]
+    σ1 = jnp.sqrt(Σ2[-1])
+    v1 = jnp.einsum("nchw,n->chw", Xc, u1) / σ1
+    v1 = v1 * wlat[:, None]
+    v1 = v1.ravel()
+    
     # Define search parameters
     σmax_low, σmax_high = search_interval
     max_split = 20
     n_montecarlo = 100
     max_montecarlo = 10000
-    npool = 50000
+    popsize = 8
     tgt_pow = 0.1
     tol = 0.001 + 1.96 * np.sqrt(tgt_pow * (1 - tgt_pow)  / max_montecarlo)
     key = jr.PRNGKey(seed)
@@ -218,7 +240,9 @@ def estimate_sigma_max(
                                          σmax=σmax,
                                          α=alpha,
                                          n_montecarlo=n_montecarlo,
-                                         npool=npool,
+                                         popsize=popsize,
+                                         v1=v1,
+                                         μX=μX,
                                          μ=μ,
                                          σ=σ,
                                          ctx_size=ctx_size,
@@ -245,7 +269,6 @@ def estimate_sigma_max(
                 n_montecarlo = min(2 * n_montecarlo, max_montecarlo)
             if np.allclose(σmax_low, σmax_high, atol=1):
                 break
-
 
     # Save and return
     if sigma_max_path:

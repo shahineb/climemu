@@ -82,13 +82,12 @@ def process_batch(batch: Tuple, μ: jnp.ndarray, σ: jnp.ndarray) -> jnp.ndarray
 ################################################################################
 
 
-def estimate_power(dataset, σmax, α, n_montecarlo, npool, μ, σ, ctx_size, key):
+def estimate_power(dataset, σmax, α, n_montecarlo, popsize, v1, μX, μ, σ, ctx_size, key):
     # Initialize dataloader on subset of size n_iter
     dataset_size = len(dataset)
-    indices = jr.permutation(key, dataset_size)[:n_montecarlo].tolist()
-    rejections = 0
+    indices = jr.permutation(key, dataset_size)[:n_montecarlo * popsize].tolist()
     dataset_subset = Subset(dataset, indices)
-    dummy_loader = DataLoader(dataset_subset, batch_size=1, shuffle=True, collate_fn=numpy_collate)
+    dummy_loader = DataLoader(dataset_subset, batch_size=popsize, shuffle=True, collate_fn=numpy_collate)
 
     # Estimate power on this subset
     rejections = 0
@@ -97,16 +96,17 @@ def estimate_power(dataset, σmax, α, n_montecarlo, npool, μ, σ, ctx_size, ke
         for batch in dummy_loader:
             # Draw sample and flatten
             x = process_batch(batch, μ, σ)[:, :-ctx_size]
-            x0 = np.array(x.ravel())
-            x0 = np.random.choice(x0, size=npool, replace=False)
+            x0 = np.array(x - μX).reshape(popsize, -1)
 
-            # Add noise and perform test
-            xn = x0 + σmax * np.random.randn(len(x0))
-            _, pvalue = kstest(xn, "norm", args=(0, σmax))
+            # Add noise and project against lead PC
+            xn = x0 + σmax * np.random.randn(*x0.shape)
+            xnTv1 = xn @ v1
+
+            # Perform test
+            _, pvalue = kstest(xnTv1, "norm", args=(0, σmax))
             rejections += (pvalue < α)
             _ = pbar.update(1)
     return rejections / n_montecarlo
-
 
 
 ################################################################################

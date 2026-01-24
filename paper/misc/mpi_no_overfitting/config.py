@@ -16,7 +16,7 @@ class ModelConfig:
     Defines the UNet structure used for the diffusion model, including input dimensions,
     filter counts for encoder/decoder paths, and embedding dimensions.
     """
-    input_size: Tuple[int, int, int] = (5, 128, 256)  # (channels, nlat, nlon)
+    input_size: Tuple[int, int, int] = (5, 96, 192)  # (channels, nlat, nlon)
     nside: int = 64  # HEALPix nside parameter
     enc_filters: List[int] = (32, 64, 128, 256, 512)  # Filter counts for each encoder block
     dec_filters: List[int] = (256, 128, 64, 32, 32)  # Filter counts for each decoder block
@@ -34,7 +34,7 @@ class DataConfig:
     Specifies dataset paths, climate model, experiments, and pattern scaling parameters.
     """
     root_dir: str = "/orcd/data/raffaele/001/shahineb/products/cmip6/processed"  # CMIP6 data directory
-    model_name: str = "MIROC6"  # Climate model to use
+    model_name: str = "MPI-ESM1-2-LR"  # Climate model to use
     train_experiments: List[str] = ("piControl", "historical", "ssp126", "ssp585")  # Training experiments
     val_experiments: List[str] = ("1pctCO2",)  # Validation experiments
     variables: List[str] = ("tas", "pr", "hurs", "sfcWind")  # Climate variables
@@ -56,10 +56,10 @@ class TrainingConfig:
     batch_size: int = 32  # Number of samples per batch
     learning_rate: float = 1e-4  # Adam optimizer learning rate
     ema_decay: float = 0.999  # Exponential moving average decay
-    epochs: int = 15  # Number of training epochs
-    log_interval: int = 20  # Steps between metric logging
-    queue_length: int = 30  # Length of sliding window for metrics
+    epochs: int = 30  # Number of training epochs
+    log_interval: int = 20  # Steps at which to log training loss
     sample_interval: int = 10000  # Steps between sample generation
+    queue_length: int = 30  # Length of sliding window for metrics
     sample_steps: int = 30  # Number of diffusion steps for sampling
     sample_count: int = 10  # Number of samples to generate
     random_seed: int = 0  # Seed for reproducibility
@@ -73,7 +73,7 @@ class TrainingConfig:
 class ScheduleConfig:
     """Configuration for the diffusion process.
 
-    Defines the noise schedule parameters for the variance exploding process.
+    Defines the noise schedule parameters for the variance exploding schedule.
     """
     sigma_max: float = None  # Maximum noise level, if None then estimated from training data
     sigma_min: float = 1e-2  # Minimum noise level
@@ -90,7 +90,6 @@ class SamplingConfig:
     batch_size: int = 2  # Batch size for evaluation
     random_seed: int = 2100  # Seed for reproducibility
     output_dir: str = f"/orcd/data/raffaele/001/shahineb/emulated/climemu/paper/{EXPERIMENT_NAME}/outputs"  # Output directory for inference
-
 
 @dataclass
 class Config:

@@ -30,7 +30,6 @@ RANDOM_SEED = 5  # For reproducible sample selection
 # COMMON FUNCTIONS
 # =============================================================================
 
-
 def compute_Cl(da):
     """Compute power spectrum using spherical harmonics."""
     da = da - da.mean()
@@ -55,12 +54,29 @@ def get_plot_data(pred_da, cmip6_da):
                 _ = pbar.update(1)
     diffusion_Cl = jnp.stack(diffusion_Cl)
     cmip6_Cl = jnp.stack(cmip6_Cl)
-    diffusion = {'median': jnp.quantile(diffusion_Cl, 0.5, axis=0),
-                 'lb': jnp.quantile(diffusion_Cl, 0.05, axis=0),
-                 'ub': jnp.quantile(diffusion_Cl, 0.95, axis=0)}
-    cmip6 = {'median': jnp.quantile(cmip6_Cl, 0.5, axis=0),
-             'lb': jnp.quantile(cmip6_Cl, 0.05, axis=0),
-             'ub': jnp.quantile(cmip6_Cl, 0.95, axis=0)}
+
+    # Bootstrap
+    n_boot = 10000
+    rng = np.random.default_rng(None)
+    boot_diffusion = []
+    boot_cmip6 = []
+    for _ in range(n_boot):
+        idx = rng.integers(0, nt, size=nt)
+        boot_diffusion.append(diffusion_Cl[idx].mean(axis=0))
+        boot_cmip6.append(cmip6_Cl[idx].mean(axis=0))
+    boot_diffusion = jnp.array(boot_diffusion)
+    boot_cmip6 = jnp.array(boot_cmip6)
+
+    diffusion = {'mean': jnp.mean(diffusion_Cl, axis=0),
+                 'mean_ub': jnp.quantile(boot_diffusion, 0.0275, axis=0),
+                 'mean_lb': jnp.quantile(boot_diffusion, 0.975, axis=0),
+                 'lb': jnp.quantile(diffusion_Cl, 0.0275, axis=0),
+                 'ub': jnp.quantile(diffusion_Cl, 0.975, axis=0)}
+    cmip6 = {'mean': jnp.mean(cmip6_Cl, axis=0),
+             'mean_ub': jnp.quantile(boot_cmip6, 0.0275, axis=0),
+             'mean_lb': jnp.quantile(boot_cmip6, 0.975, axis=0),
+             'lb': jnp.quantile(cmip6_Cl, 0.0275, axis=0),
+             'ub': jnp.quantile(cmip6_Cl, 0.975, axis=0)}
     return diffusion, cmip6
 
 
@@ -162,10 +178,14 @@ def create_power_spectra_plot():
 
         # Power spectra plot
         ax = fig.add_subplot(gs[2, i:i+2])
-        ax.fill_between(k, emulator[var]['lb'], emulator[var]['ub'], color='tomato', alpha=0.2)
-        ax.fill_between(k, cmip6[var]['lb'], cmip6[var]['ub'], color='cornflowerblue', alpha=0.2)
-        ax.plot(k, cmip6[var]['median'], label=config.data.model_name, color='cornflowerblue')
-        ax.plot(k, emulator[var]['median'], label='Emulator', color='tomato')
+        ax.fill_between(k, emulator[var]['lb'], emulator[var]['ub'], color='tomato', alpha=0.15)
+        # ax.plot(k, emulator[var]['lb'], color='tomato', alpha=0.5, ls='--')
+        # ax.plot(k, emulator[var]['ub'], color='tomato', alpha=0.5, ls='--')
+        ax.fill_between(k, cmip6[var]['lb'], cmip6[var]['ub'], color='cornflowerblue', alpha=0.15)
+        # ax.plot(k, cmip6[var]['lb'], color='cornflowerblue', alpha=0.5, ls='--')
+        # ax.plot(k, cmip6[var]['ub'], color='cornflowerblue', alpha=0.5, ls='--')
+        ax.plot(k, cmip6[var]['mean'], label=config.data.model_name, color='cornflowerblue')
+        ax.plot(k, emulator[var]['mean'], label='Emulator', color='tomato')
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.margins(x=0, y=0)

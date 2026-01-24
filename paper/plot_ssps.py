@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from src.datasets import CMIP6Data
 from src.utils import arrays
 
-dataset = CMIP6Data(root="/orcd/data/raffaele/001/shahineb/cmip6/processed",
+dataset = CMIP6Data(root="/orcd/data/raffaele/001/shahineb/products/cmip6/processed",
                     model="MPI-ESM1-2-LR",
                     experiments=["historical", "ssp126", "ssp245", "ssp370", "ssp585"],
                     variables=["tas"])
@@ -31,10 +31,10 @@ ssp585 = gmst['/ssp585'].ds.groupby('time.year').mean()
      "SSP5-8.5": ssp585.std('member')}
 
 color = {"historical": "C7",
-        "SSP1-2.6": "C2",
-        "SSP2-4.5": "C0",
-        "SSP3-7.0": "C3",
-        "SSP5-8.5": "C4"}
+        "SSP1-2.6": "#009E73",
+        "SSP2-4.5": "#0072B2",
+        "SSP3-7.0": "#CC79A7",
+        "SSP5-8.5": "#D55E00"}
 
 fig, ax = plt.subplots(1, 1, figsize=(6, 3))
 for i, scenario in enumerate(μ.keys()):
