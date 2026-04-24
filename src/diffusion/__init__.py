@@ -4,7 +4,9 @@ from .nn import (
 
 from .losses import (
     denoising_make_step,
-    denoising_batch_loss
+    denoising_batch_loss,
+    difference_minimizing_make_step,
+    difference_minimizing_batch_loss
 )
 
 from .schedules import (

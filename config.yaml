@@ -1,0 +1,9 @@
+input_size: [5, 96, 192]        # Shape of input (channels, nlat, nlon)
+nside: 64                       # HEALPix nside parameter (controls resolution of the spherical mesh)
+enc_filters: [32, 64, 128, 256, 512]   # Number of filters in each encoder block
+dec_filters: [256, 128, 64, 32, 32]    # Number of filters in each decoder block
+out_channels: 4                 # Number of output channels (e.g. tas, pr, hurs, sfcWind)
+temb_dim: 256                   # Dimension of time embedding vectors
+healpix_emb_dim: 5              # Dimension of HEALPix positional embeddings
+context_channels: 1             # Number of context channels (e.g. GMST ΔT for conditioning)
+sigma_min: 0.01                 # Minimum noise level for the diffusion process

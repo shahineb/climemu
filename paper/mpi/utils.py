@@ -134,6 +134,28 @@ def draw_samples_single(model: eqx.Module, schedule: Any, pattern: jnp.ndarray,
     return denormalize(samples, μ[:-1], σ[:-1])
 
 @eqx.filter_jit
+def draw_samples_single_consistency(denoiser: eqx.Module, schedule: Any, pattern: jnp.ndarray,
+                        n_samples: int, n_steps: int, μ: jnp.ndarray, σ: jnp.ndarray,
+                        output_size: Tuple, key: jr.PRNGKey = jr.PRNGKey(0)) -> jnp.ndarray:
+    """Draw samples for a given pattern using consistency model."""
+    context = normalize(pattern, μ[-1], σ[-1])[None, ...]
+    sigma_steps = schedule.σ(schedule.get_timesteps(n_steps))
+
+    def _sample_one(key):
+        init_key, *step_keys = jr.split(key, 1 + n_steps)
+        x = jr.normal(init_key, output_size) * sigma_steps[-1]
+        for i in range(n_steps-1, -1, -1):
+            σ_i = sigma_steps[i]
+            x = denoiser(jnp.concatenate([x / (1+σ_i), context], axis=0), σ_i)
+            if i > 0:
+                x += jr.normal(step_keys[i-1], x.shape) * sigma_steps[i-1]
+        return x
+
+    keys = jr.split(key, n_samples)
+    samples = jax.vmap(_sample_one)(keys)
+    return denormalize(samples, μ[:-1], σ[:-1])
+
+@eqx.filter_jit
 def draw_samples_batch(model: eqx.Module, schedule: Any, pattern_batch: jnp.ndarray,
                        n_samples: int, n_steps: int, μ: jnp.ndarray,
                        σ: jnp.ndarray, output_size: Tuple, key: jr.PRNGKey = jr.PRNGKey(0)) -> jnp.ndarray:
@@ -147,7 +169,19 @@ def draw_samples_batch(model: eqx.Module, schedule: Any, pattern_batch: jnp.ndar
                 output_size=output_size)
     return jax.vmap(Γ)(pattern=pattern_batch, key=keys)
 
-
+@eqx.filter_jit
+def draw_samples_batch_consistency(denoiser: eqx.Module, schedule: Any, pattern_batch: jnp.ndarray,
+                       n_samples: int, n_steps: int, μ: jnp.ndarray,
+                       σ: jnp.ndarray, output_size: Tuple, key: jr.PRNGKey = jr.PRNGKey(0)) -> jnp.ndarray:
+    """Draw samples for a batch of patterns."""
+    keys = jr.split(key, pattern_batch.shape[0])
+    Γ = partial(draw_samples_single_consistency,
+                denoiser=denoiser,
+                schedule=schedule,
+                n_samples=n_samples,
+                n_steps=n_steps, μ=μ, σ=σ,
+                output_size=output_size)
+    return jax.vmap(Γ)(pattern=pattern_batch, key=keys)
 
 ################################################################################
 #                               EMA FUNCTIONS                                  #
