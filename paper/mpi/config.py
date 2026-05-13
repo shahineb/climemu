@@ -35,7 +35,7 @@ class DataConfig:
     """
     root_dir: str = "/orcd/data/raffaele/001/shahineb/products/cmip6/processed"  # CMIP6 data directory
     model_name: str = "MPI-ESM1-2-LR"  # Climate model to use
-    train_experiments: List[str] = ("piControl", "historical", "ssp126", "ssp585")  # Training experiments
+    train_experiments: List[str] = ("piControl", "ssp585")  # Training experiments
     val_experiments: List[str] = ("1pctCO2",)  # Validation experiments
     variables: List[str] = ("tas", "pr", "hurs", "sfcWind")  # Climate variables
     val_time_slice: Tuple[str, str] = (None, None)  # Time range for validation
@@ -56,12 +56,12 @@ class TrainingConfig:
     batch_size: int = 32  # Number of samples per batch
     learning_rate: float = 1e-4  # Adam optimizer learning rate
     ema_decay: float = 0.999  # Exponential moving average decay
-    epochs: int = 15  # Number of training epochs
-    log_interval: int = 20  # Steps at which to log training loss
-    sample_interval: int = 10000  # Steps between sample generation
+    epochs: int = 5  # Number of training epochs, previously 5
+    log_interval: int = 10  # Steps at which to log training loss
+    sample_interval: int = 50  # Steps between sample generation
     queue_length: int = 30  # Length of sliding window for metrics
     sample_steps: int = 30  # Number of diffusion steps for sampling
-    sample_count: int = 10  # Number of samples to generate
+    sample_count: int = 2  # Number of samples to generate, 10
     random_seed: int = 0  # Seed for reproducibility
     checkpoint_interval: int = 1  # Epochs between checkpoints
     checkpoint_filename: str = os.path.join(CACHE_DIR, "ckpt.eqx")  # Output checkpoint filename

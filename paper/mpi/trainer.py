@@ -12,7 +12,9 @@ from torch.utils.data import DataLoader
 import wandb
 
 from src.utils.collate import numpy_collate
-from src.diffusion import denoising_make_step, denoising_batch_loss
+# from src.diffusion import denoising_make_step, denoising_batch_loss
+from src.diffusion import difference_minimizing_make_step, difference_minimizing_batch_loss
+from src.diffusion.losses.difference_minimizing import mapping_func, weighting_function
 from src.datasets import PatternToCMIP6Dataset
 from paper.mpi.config import Config
 from . import utils
@@ -37,8 +39,15 @@ class TrainingState:
     epoch: int = 0
 
 
-def log_training_metrics(config, state, loss,  grad):
-    wandb.log({"Train Loss": loss, "Gradient norm": grad}, step=state.step)
+def log_training_metrics(config, state, loss, grad, mse=None, σr_at_σmax=None, weighting_func=None):
+    metrics = {"Train Loss": loss, "Gradient norm": grad}
+    if mse is not None:
+        metrics["Unweighted MSE"] = mse
+    if σr_at_σmax is not None:
+        metrics["σr at σmax"] = float(σr_at_σmax)
+    if weighting_func is not None:
+        metrics["1/(σmax-σr)"] = float(weighting_func)
+    wandb.log(metrics, step=state.step)
 
 
 def log_validation_metrics(config, state, val_loader, μ, σ, schedule, χval):
@@ -50,8 +59,8 @@ def log_validation_metrics(config, state, val_loader, μ, σ, schedule, χval):
             # Process batch and compute validation loss
             x = utils.process_batch(batch, μ, σ)
             _, χval = jr.split(χval)
-            val_value = denoising_batch_loss(
-                state.ema_model, config.model.context_channels, schedule, x, χval
+            val_value, _ = difference_minimizing_batch_loss(             ## changed to new batch_loss function with iters_done
+                state.ema_model, config.model.context_channels, schedule, x, jnp.array(state.step), χval
             )
             val_loss += val_value.item()
             # Update progress bar
@@ -110,8 +119,8 @@ def train_epoch(
             _, χtrain = jr.split(χtrain)
             
             # Perform a single optimization step
-            value, model, χtrain, opt_state, grad_norm = denoising_make_step(
-                state.model, config.model.context_channels, schedule, x, χtrain, state.opt_state, optimizer.update
+            value, mse, model, χtrain, opt_state, grad_norm = difference_minimizing_make_step(   ## changed to new make_step function with iters_done
+                state.model, config.model.context_channels, schedule, x, jnp.array(state.step), χtrain, state.opt_state, optimizer.update
             )
 
             # Update training state
@@ -123,6 +132,7 @@ def train_epoch(
             grad_queue.append(grad_norm.item())
             running_loss = sum(loss_queue) / len(loss_queue)
             running_grad = sum(grad_queue) / len(grad_queue)
+            running_mse = float(mse)
 
             # Update progress bar
             pbar.set_description(f"Epoch {state.epoch + 1} | Loss {round(running_loss, 2)}")
@@ -130,7 +140,7 @@ def train_epoch(
   
             # Log training metrics at specified intervals
             if (state.step + 1) % config.training.log_interval == 0 or (state.step + 1) & state.step == 0:
-                log_training_metrics(config, state, running_loss, running_grad)
+                log_training_metrics(config, state, running_loss, running_grad, running_mse, mapping_func(state.step, schedule.σmax), weighting_function(schedule.σmax, mapping_func(state.step, schedule.σmax)))
 
             # log validation metrics + samples at specified intervals
             if (state.step + 1) % config.training.sample_interval == 0 or (state.step + 1) & state.step == 0:
@@ -148,7 +158,8 @@ def train_epoch(
         eqx.tree_serialise_leaves(config.training.checkpoint_filename, state.ema_model)
 
     # Log final metrics
-    log_training_metrics(config, state, running_loss, running_grad)
+    σr = mapping_func(state.step, schedule.σmax)
+    log_training_metrics(config, state, running_loss, running_grad, running_mse, σr, weighting_function(schedule.σmax, σr))
     log_validation_metrics(config, state, val_loader, μ, σ, schedule, χval)
 
     # Update epoch counter and return updated state
@@ -182,7 +193,10 @@ def train(
         Trained model
     """
     # Setup optimizer
-    optimizer = optax.adam(learning_rate=config.training.learning_rate)
+    optimizer = optax.chain(
+        optax.clip_by_global_norm(50.0),
+        optax.adam(learning_rate=config.training.learning_rate)
+    )
     opt_state = optimizer.init(eqx.filter(model, eqx.is_inexact_array))
     
     # Initialize training state

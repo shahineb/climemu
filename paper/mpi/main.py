@@ -1,3 +1,5 @@
+import os
+import jax.numpy as jnp
 import equinox as eqx
 
 from src.diffusion import HealPIXUNet, ContinuousVESchedule
@@ -6,6 +8,14 @@ from .data import load_dataset, compute_normalization, estimate_sigma_max
 from .trainer import train
 from .utils import load_or_compute_edges, print_parameter_count
 
+
+class Denoiser(eqx.Module):
+    unet: HealPIXUNet
+    ctx_size: int = eqx.field(static=True)
+    def __call__(self, x, σ):
+        def c_skip(σ): return 1 / (1 + σ**2)
+        def c_out(σ): return σ / jnp.sqrt(1 + σ**2)
+        return c_skip(σ) * x[:-self.ctx_size] + c_out(σ) * self.unet(x, σ)
 
 
 def main():
@@ -90,13 +100,23 @@ def main():
         edges_to_latlon=edges_to_latlon
     )
     print_parameter_count(model)
+    # Initialize denoiser with preconditioning
+    denoiser = Denoiser(model, config.model.context_channels)
     
     # Train the model
-    model = train(model, train_dataset, val_dataset, schedule, μ_train, σ_train, config)
+    denoiser = eqx.tree_deserialise_leaves("weights.eqx", denoiser) ## for diffusion, started with 0 weights
+    denoiser = train(denoiser, train_dataset, val_dataset, schedule, μ_train, σ_train, config)
     
     # Save the trained model
-    eqx.tree_serialise_leaves(config.training.model_filename, model)
-    print(f"Model saved to {config.training.model_filename}")
+    import os
+
+
+    EXPERIMENT_DIR = os.path.dirname(__file__)
+    CACHE_DIR = os.path.join(EXPERIMENT_DIR, "cache")
+    EXPERIMENT_NAME = os.path.basename(EXPERIMENT_DIR)
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    eqx.tree_serialise_leaves(os.path.join(CACHE_DIR, "weights_consistency_2.eqx"), denoiser) ## for diffusion, config.training.model_filename
+    print(f"Model saved to weights_consistency_2.eqx")    ## for diffusion, config.training.model_filename
 
 
 if __name__ == "__main__":
