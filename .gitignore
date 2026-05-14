@@ -198,3 +198,19 @@ wandb/
 
 # OS generated files
 .DS_Store
+
+
+
+# data files
+*.nc
+*.npy
+*.npz
+*.csv
+*.h5
+*.hdf5
+*.pkl
+*.zip
+*.eqx
+*.jpg
+*.png
+*.eps
