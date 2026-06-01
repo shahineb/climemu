@@ -13,7 +13,7 @@ class Denoiser(eqx.Module):
     unet: HealPIXUNet
     ctx_size: int = eqx.field(static=True)
     def __call__(self, x, σ):
-        def c_skip(σ): return 1 / (1 + σ**2)
+        def c_skip(σ): return 1 / jnp.sqrt(1 + σ**2)
         def c_out(σ): return σ / jnp.sqrt(1 + σ**2)
         return c_skip(σ) * x[:-self.ctx_size] + c_out(σ) * self.unet(x, σ)
 
@@ -115,8 +115,8 @@ def main():
     CACHE_DIR = os.path.join(EXPERIMENT_DIR, "cache")
     EXPERIMENT_NAME = os.path.basename(EXPERIMENT_DIR)
     os.makedirs(CACHE_DIR, exist_ok=True)
-    eqx.tree_serialise_leaves(os.path.join(CACHE_DIR, "weights_consistency_2.eqx"), denoiser) ## for diffusion, config.training.model_filename
-    print(f"Model saved to weights_consistency_2.eqx")    ## for diffusion, config.training.model_filename
+    eqx.tree_serialise_leaves(os.path.join(CACHE_DIR, "weights_consistency.eqx"), denoiser) ## for diffusion, config.training.model_filename
+    print(f"Model saved to weights_consistency.eqx")    ## for diffusion, config.training.model_filename
 
 
 if __name__ == "__main__":

@@ -139,14 +139,18 @@ def draw_samples_single_consistency(denoiser: eqx.Module, schedule: Any, pattern
                         output_size: Tuple, key: jr.PRNGKey = jr.PRNGKey(0)) -> jnp.ndarray:
     """Draw samples for a given pattern using consistency model."""
     context = normalize(pattern, μ[-1], σ[-1])[None, ...]
-    sigma_steps = schedule.σ(schedule.get_timesteps(n_steps))
-
+    # sigma_steps = schedule.σ(schedule.get_timesteps(n_steps))
+    rho = 7
+    t = jnp.linspace(0, 1, n_steps + 1)
+    sigma_steps = (schedule.σmax**(1/rho) + t * (schedule.σmin**(1/rho) - schedule.σmax**(1/rho)))**rho
+    print(f'{sigma_steps=}')
+    
     def _sample_one(key):
         init_key, *step_keys = jr.split(key, 1 + n_steps)
         x = jr.normal(init_key, output_size) * sigma_steps[-1]
         for i in range(n_steps-1, -1, -1):
             σ_i = sigma_steps[i]
-            x = denoiser(jnp.concatenate([x / (1+σ_i), context], axis=0), σ_i)
+            x = denoiser(jnp.concatenate([x / (1+σ_i**2)**0.5, context], axis=0), σ_i)
             if i > 0:
                 x += jr.normal(step_keys[i-1], x.shape) * sigma_steps[i-1]
         return x

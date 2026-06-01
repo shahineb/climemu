@@ -6,21 +6,18 @@ import equinox as eqx
 from functools import partial
 import matplotlib.pyplot as plt
 
-q = 2 # hyperparameter >1
-d = 10000/8
-
 def mapping_func(iters, σ):
-    return jnp.maximum(0, (1 - q**(-jnp.ceil(iters/d)) * n(σ)) * σ)
+    q = 2 # hyperparameter >1
+    d = 10000/8
 
-def n(σ):
-    b = 1
-    k = 8
-    # return 1
-    # return 1+k
-    return 1 + k/(1+jnp.exp(b*σ))
-# def n(σ):
-#     k = 8
-#     return 1 + k
+    def n(σ):
+        b = 1
+        k = 8
+        # return 1
+        # return 1+k
+        return 1 + k/(1+jnp.exp(b*σ))
+
+    return jnp.maximum(0, (1 - q**(-jnp.ceil(iters/d)) * n(σ)) * σ)
 
 # Mapping Function visualization:
 # σt = 0.8
@@ -35,14 +32,6 @@ def weighting_function(σt, σr):
     return 1/jnp.maximum(1e-5, σt)
     # return 1/jnp.maximum(1e-5, σt - σr)
 
-# def c_skip(σ):
-#     return 1 / (1 + σ**2)
-
-# def c_out(σ):
-#     return σ / jnp.sqrt(1 + σ**2)
-
-iters = jnp.arange(1, 3e3)
-
 # %%
 def difference_minimizing_single_loss(model, ctx_size, x, σ, iters, key):
     x0, ctx = x[:-ctx_size, ...], x[-ctx_size:, ...]
@@ -53,8 +42,8 @@ def difference_minimizing_single_loss(model, ctx_size, x, σ, iters, key):
     ε = jr.normal(key, x0.shape)
     x̃ = x0 + σ * ε
     x̃r = x0 + σr * ε
-    x̃_rescaled = x̃ / (1 + σ)
-    x̃r_rescaled = x̃r / (1 + σr)
+    x̃_rescaled = x̃ / (1 + σ**2)**0.5
+    x̃r_rescaled = x̃r / (1 + σr**2)**0.5
 
     # Concatenate context
     x̃_rescaled = jnp.concatenate([x̃_rescaled, ctx], axis=0)

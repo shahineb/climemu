@@ -1,14 +1,25 @@
 import os
+import time
 from src.diffusion import HealPIXUNet, ContinuousVESchedule
 from paper.mpi.config import Config
+from paper.mpi.main import Denoiser
+from paper.mpi.data import load_dataset
+from src.utils.collate import numpy_collate
 CACHE_DIR = "paper/mpi/cache"
 from paper.mpi import utils
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 import jax.random as jr
 from functools import partial
 import numpy as np
 import einops
+import matplotlib
+import matplotlib.pyplot as plt
+from scipy import linalg
+from sklearn.decomposition import PCA
+from torch.utils.data import DataLoader
+from typing import Tuple, Any, List
 
 config = Config()
 
@@ -29,9 +40,8 @@ model = HealPIXUNet(
     edges_to_healpix=edges_to_healpix,
     edges_to_latlon=edges_to_latlon
 )
-from paper.mpi.main import Denoiser
 denoiser = Denoiser(model, config.model.context_channels)
-denoiser = eqx.tree_deserialise_leaves(f"{CACHE_DIR}/weights_consistency_2.eqx", denoiser)
+denoiser = eqx.tree_deserialise_leaves(f"{CACHE_DIR}/weights_consistency.eqx", denoiser)
 
 # Load sigma max (LOAD THIS FILE)
 σmax = jnp.load(f"{CACHE_DIR}/σmax.npy")
@@ -44,71 +54,101 @@ _stats = jnp.load(f"{CACHE_DIR}/μ_σ.npz")
 
 # Pattern scaling (LOAD THIS FILE)
 β = jnp.load(f"{CACHE_DIR}/β.npy")
-
+β_flat = np.array(β)  # (12, lat*lon, 2) — keep original shape for load_dataset
 
 # Initialize sampling function
 χtest = jr.PRNGKey(config.sampling.random_seed)
 output_size = (config.model.out_channels, config.model.input_size[1], config.model.input_size[2])
-generate_samples = partial(utils.draw_samples_batch_consistency,
-                            denoiser=denoiser,
-                            schedule=schedule,
-                            n_samples=5, # config.sampling.n_samples,
-                            n_steps=3,
-                            μ=μ_train, σ=σ_train,
-                            output_size=output_size)
-
-
-
 
 # Generate samples
-ΔT = jnp.array([2.0]*12)
-months = jnp.array(range(12))
+ΔT = jnp.array([2.0]) # the code only works if this uses the same T for all 12
+months = jnp.array([5])  # June only (0-indexed)
 β = einops.rearrange(β, 'm (l1 l2) i -> m l1 l2 i', l1=96)
 assert β.shape == (12, 96, 192, 2)
 pattern_batch = β[months, :, :, 0] + β[months, :, :, 1] * ΔT.reshape(-1, 1, 1)
-# pred_samples = generate_samples(pattern_batch=pattern_batch, key=χtest) # (3 months, n_samples, 4 vars, 96 lat, 192 lon)
-# print(f"{pred_samples.shape=}")
 
+generate_samples = partial(utils.draw_samples_batch_consistency,
+                            denoiser=denoiser,
+                            schedule=schedule,
+                            pattern_batch=pattern_batch,
+                            n_samples=20,
+                            n_steps=1,
+                            μ=μ_train, σ=σ_train,
+                            output_size=output_size,
+                            key=χtest)
 
-import jax
-from typing import Tuple, Any, List
+# Generate samples with timing
+t0 = time.perf_counter()
+pred_samples = generate_samples() # returns (month, sample #, climate field, lat, lon)
+jax.block_until_ready(pred_samples)
+t1 = time.perf_counter()
+n_total = pred_samples.shape[0] * pred_samples.shape[1]
+print(f"Inference: {t1-t0:.2f}s total | {(t1-t0)/n_total:.3f}s per sample ({pred_samples.shape[0]} months x {pred_samples.shape[1]} draws)")
 
-key = jr.PRNGKey(10)
-n_steps = 2
+# FID (data-space Fréchet distance, PCA-reduced)
+def _compute_fd(gen: np.ndarray, ref: np.ndarray, n_components: int = 50) -> float:
+    n = min(gen.shape[0] - 1, ref.shape[0] - 1, n_components)
+    if n < 2:
+        return float('nan')
+    pca = PCA(n_components=n)
+    pca.fit(np.concatenate([gen, ref], axis=0))
+    g, r = pca.transform(gen), pca.transform(ref)
+    mu_g, mu_r = g.mean(0), r.mean(0)
+    cov_g, cov_r = np.cov(g, rowvar=False), np.cov(r, rowvar=False)
+    covmean = linalg.sqrtm(cov_g @ cov_r)
+    if np.iscomplexobj(covmean):
+        covmean = covmean.real
+    diff = mu_g - mu_r
+    return float(np.dot(diff, diff) + np.trace(cov_g + cov_r - 2 * covmean))
 
+try:
+    from collections import defaultdict
+    print("Loading 1pctCO2 validation data for FID reference...")
+    val_dataset = load_dataset(
+        root=config.data.root_dir,
+        model=config.data.model_name,
+        experiments=list(config.data.val_experiments),
+        variables=config.data.variables,
+        in_memory=False,
+        external_β=β_flat
+    )
 
-pattern = pattern_batch[5]
-context = utils.normalize(pattern, μ_train[-1], σ_train[-1])[None, ...]
-rho = 7
-t = jnp.linspace(0, 1, n_steps + 1)
-sigma_steps = (schedule.σmax**(1/rho) + t * (schedule.σmin**(1/rho) - schedule.σmax**(1/rho)))**rho
-# sigma_steps = sigma_steps[:-1]
-# sigma_steps = schedule.σ(schedule.get_timesteps(n_steps + 1))[1:]
-# sigma_steps = sigma_steps[::-1]
+    # Build per-month reference samples matching ΔT ≈ target
+    ΔT_target = float(np.array(ΔT)[0])
+    ΔT_tol = 0.5
+    month_refs = defaultdict(list)
+    n_search = min(len(val_dataset), 2000)
+    rng = np.random.default_rng(0)
+    print(f"Searching {n_search} val samples for ΔT≈{ΔT_target}±{ΔT_tol}...")
+    for idx in rng.choice(len(val_dataset), n_search, replace=False):
+        e_i, ω_i, t_i = val_dataset.cmip6data.indexmap[idx]
+        exp = val_dataset.cmip6data.experiments[e_i]
+        selected = val_dataset.cmip6data[exp].isel(time=t_i, member=ω_i)
+        month = int(selected.time.dt.month.item()) - 1  # 0-indexed
+        gmst = float(val_dataset.gmst[exp].isel(time=t_i).ds.tas.values.squeeze())
+        if abs(gmst - ΔT_target) <= ΔT_tol:
+            month_refs[month].append(selected.ds.to_array().values)  # (n_vars, lat, lon)
 
-
-init_key, *step_keys = jr.split(key, n_steps + 1)
-x = jr.normal(init_key, output_size) * schedule.σmax
-
-for i in range(n_steps):
-    σi = sigma_steps[i]
-    x = denoiser(jnp.concatenate([x / (1 + σi), context], axis=0), σi)
-    if i < n_steps - 1:
-        σip1 = sigma_steps[i + 1]
-        x += jr.normal(step_keys[i], x.shape) * σip1
-# x = denoiser(jnp.concatenate([x / (1 + schedule.σmin), context], axis=0), schedule.σmin)
-
-x = utils.denormalize(x, μ_train[:-1], σ_train[:-1])
-
-
-fig, axes = plt.subplots(2, 2, figsize=(12, 6))
-for i, ax in enumerate(axes.flat):
-    vmax = jnp.abs(x[i]).max()
-    im = ax.imshow(x[i], cmap="RdBu_r", vmin=-vmax, vmax=vmax, origin="lower")
-    plt.colorbar(im, ax=ax)
-plt.tight_layout()
-plt.savefig("outputs/consistency_sample.jpg", dpi=300)
-plt.close()
+    _var_names = ["tas", "pr", "hurs", "sfcWind"]
+    target_months_list = [int(m) for m in months]
+    for m_idx, month in enumerate(target_months_list):
+        refs = month_refs.get(month, [])
+        gen_arr = np.array(pred_samples[m_idx])  # (n_samples, n_vars, lat, lon)
+        if len(refs) < 5:
+            print(f"Month {month+1}: only {len(refs)} refs at ΔT≈{ΔT_target}±{ΔT_tol} — FID skipped")
+            continue
+        ref_arr = np.stack(refs)
+        if gen_arr.shape[0] < 5:
+            print(f"Warning: only {gen_arr.shape[0]} generated samples for month {month+1} — FID estimate may be unreliable")
+        gen_f = gen_arr.reshape(gen_arr.shape[0], -1)
+        ref_f = ref_arr.reshape(ref_arr.shape[0], -1)
+        print(f"Month {month} FID (data-space, {len(refs)} refs): {_compute_fd(gen_f, ref_f):.4f}")
+        gen_bv = gen_arr.reshape(gen_arr.shape[0], len(_var_names), -1)
+        ref_bv = ref_arr.reshape(ref_arr.shape[0], len(_var_names), -1)
+        for i, vname in enumerate(_var_names):
+            print(f"  FID [{vname}]: {_compute_fd(gen_bv[:, i, :], ref_bv[:, i, :]):.4f}")
+except Exception as e:
+    print(f"FID skipped: {e}")
 
 
 # n_plot = 50
@@ -135,41 +175,14 @@ plt.close()
 # plt.close()
 
 
-
-@eqx.filter_jit
-def draw_samples_single_consistency(denoiser: eqx.Module, schedule: Any, pattern: jnp.ndarray,
-                        n_samples: int, n_steps: int, μ: jnp.ndarray, σ: jnp.ndarray,
-                        output_size: Tuple, key: jr.PRNGKey = jr.PRNGKey(0)) -> jnp.ndarray:
-    """Draw samples for a given pattern using consistency model."""
-    context = utils.normalize(pattern, μ[-1], σ[-1])[None, ...]
-    sigma_steps = schedule.σ(schedule.get_timesteps(n_steps))
-
-    def _sample_one(key):
-        init_key, *step_keys = jr.split(key, 1 + n_steps)
-        x = jr.normal(init_key, output_size) * sigma_steps[-1]
-        for i in range(n_steps-1, -1, -1):
-            σ_i = sigma_steps[i]
-            x = denoiser(jnp.concatenate([x / (1+σ_i), context], axis=0), σ_i)
-            if i > 0:
-                x += jr.normal(step_keys[i-1], x.shape) * sigma_steps[i-1]
-        return x
-
-    keys = jr.split(key, n_samples)
-    samples = jax.vmap(_sample_one)(keys)
-    return utils.denormalize(samples, μ[:-1], σ[:-1])
-
-
-# Plot pred_samples[0]: mean across samples for each of the 4 variables
-import matplotlib.pyplot as plt
-import matplotlib
-
 matplotlib.use("Agg")
 
+# Plot pred_samples: mean across samples for each of the 4 variables
 var_names = ["tas", "pr", "hurs", "sfcWind"] # Deltas of surface temp, precipitation, relative humidity, surface wind speed
 lat = np.linspace(-90, 90, 96)
 lon = np.linspace(0, 360, 192)
 
-for month in range(12):
+for month in [5]:
     sample0 = np.array(pred_samples[month])  # (n_samples, 4 variables, 96, 192)
     mean0 = sample0.mean(axis=0)         # (4 variables, 96, 192)
 
@@ -192,9 +205,9 @@ for month in range(12):
     ax.set_ylabel("Latitude")
     plt.colorbar(im, ax=ax)
 
-    fig.suptitle(f"mean pred_samples[month {month}] (consistency - 1/t weighting)", fontsize=14)
+    fig.suptitle(f"mean pred_samples[month {month}]", fontsize=14)
     plt.tight_layout()
-    os.makedirs("outputs/consistency - 1/t weighting", exist_ok=True)
-    plt.savefig(f"outputs/consistency - 1/t weighting/pred_samples_{month}.png", dpi=150)
-    print(f"Saved outputs/consistency - 1/t weighting/pred_samples_{month}.png")
+    os.makedirs("outputs/consistency", exist_ok=True)
+    plt.savefig(f"outputs/consistency/pred_samples_{month}.png", dpi=150)
+    print(f"Saved outputs/consistency/pred_samples_{month}.png")
 

@@ -56,7 +56,7 @@ class TrainingConfig:
     batch_size: int = 32  # Number of samples per batch
     learning_rate: float = 1e-4  # Adam optimizer learning rate
     ema_decay: float = 0.999  # Exponential moving average decay
-    epochs: int = 5  # Number of training epochs, previously 5
+    epochs: int = 5  # Number of training epochs
     log_interval: int = 10  # Steps at which to log training loss
     sample_interval: int = 50  # Steps between sample generation
     queue_length: int = 30  # Length of sliding window for metrics
