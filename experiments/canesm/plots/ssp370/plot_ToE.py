@@ -9,16 +9,16 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from paper.mpi.config import Config
-from paper.mpi.plots.ssp370.utils import load_data, VARIABLES, setup_figure, save_plot
-from paper.mpi.plots.piControl.utils import load_data as load_piControl_data
+from experiments.canesm.config import Config
+from experiments.canesm.plots.ssp370.utils import load_data, VARIABLES, setup_figure, save_plot
+from experiments.canesm.plots.piControl.utils import load_data as load_piControl_data
 
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = 'paper/mpi/plots/ssp370/files'
+OUTPUT_DIR = 'experiments/canesm/plots/ssp370/files'
 DPI = 300
 WIDTH_MULTIPLIER = 5.0
 HEIGHT_MULTIPLIER = 3.2
@@ -88,7 +88,7 @@ ToE_diffusion = compute_ToE(snr_diffusion)
 def create_ToE_plot():
     """Create the Time of Emergence plot."""
     # Setup figure
-    width_ratios = [0.05, 1, 1, 1, 1, 0.05]
+    width_ratios = [0.05, 1, 1, 0.05]
     height_ratios = [0.05, 1, 1]
     fig, gs = setup_figure(width_ratios, height_ratios, WIDTH_MULTIPLIER, HEIGHT_MULTIPLIER, WSPACE, HSPACE)
     

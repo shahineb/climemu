@@ -9,16 +9,16 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from paper.mpi.config import Config
-from paper.mpi.plots.ssp370.utils import load_data, setup_figure, save_plot
-from paper.mpi.plots.historical.utils import load_data as load_historical_data
+from experiments.canesm.config import Config
+from experiments.canesm.plots.ssp370.utils import load_data, setup_figure, save_plot
+from experiments.canesm.plots.historical.utils import load_data as load_historical_data
 
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = 'paper/mpi/plots/ssp370/files'
+OUTPUT_DIR = 'experiments/canesm/plots/ssp370/files'
 DPI = 300
 WIDTH_MULTIPLIER = 4.0
 HEIGHT_MULTIPLIER = 3.0

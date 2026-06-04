@@ -10,7 +10,7 @@ from ...data import load_dataset
 
 # Module-level path configuration
 CLIMATOLOGY_ROOT = '/home/shahineb/data/cmip6/processed'
-CLIMATOLOGY_MODEL = 'MPI-ESM1-2-LR'
+CLIMATOLOGY_MODEL = 'CanESM5'
 CLIMATOLOGY_MEMBER = 'r1i1p1f1'
 
 
@@ -58,22 +58,13 @@ def load_climatology(in_memory=False):
 
     tas_path = os.path.join(base_path, 'tas_climatology/Amon', f'tas_Amon_{CLIMATOLOGY_MODEL}_piControl_{CLIMATOLOGY_MEMBER}_monthly_climatology.nc')
     pr_path = os.path.join(base_path, 'pr_climatology/Amon', f'pr_Amon_{CLIMATOLOGY_MODEL}_piControl_{CLIMATOLOGY_MEMBER}_monthly_climatology.nc')
-    hurs_path = os.path.join(base_path, 'hurs_climatology/Amon', f'hurs_Amon_{CLIMATOLOGY_MODEL}_piControl_{CLIMATOLOGY_MEMBER}_monthly_climatology.nc')
-    sfcwind_path = os.path.join(base_path, 'sfcWind_climatology/Amon', f'sfcWind_Amon_{CLIMATOLOGY_MODEL}_piControl_{CLIMATOLOGY_MEMBER}_monthly_climatology.nc')
-
     climatology_tas = xr.open_dataset(tas_path)
     climatology_tas = climatology_tas.assign_coords(month=('time', months)).swap_dims({'time': 'month'}).drop_vars('time')
 
     climatology_pr = xr.open_dataset(pr_path)
     climatology_pr = climatology_pr.assign_coords(month=('time', months)).swap_dims({'time': 'month'}).drop_vars('time') * 86400
 
-    climatology_hurs = xr.open_dataset(hurs_path)
-    climatology_hurs = climatology_hurs.assign_coords(month=('time', months)).swap_dims({'time', 'month'}).drop_vars('time')
-
-    climatology_sfcWind = xr.open_dataset(sfcwind_path)
-    climatology_sfcWind = climatology_sfcWind.assign_coords(month=('time', months)).swap_dims({'time', 'month'}).drop_vars('time')
-
-    climatology = xr.merge([climatology_tas, climatology_pr, climatology_hurs, climatology_sfcWind])
+    climatology = xr.merge([climatology_tas, climatology_pr])
 
     if in_memory:
         with ProgressBar():
@@ -208,18 +199,4 @@ VARIABLES = {
         'cmap': 'BrBG',
         'color': 'cornflowerblue'
     },
-    'hurs': {
-        'channel': 2,
-        'name': 'Relative Humidity',
-        'unit': '%',
-        'cmap': 'BrBG',
-        'color': 'cornflowerblue'
-    },
-    'sfcWind': {
-        'channel': 3,
-        'name': 'Windspeed',
-        'unit': 'm/s',
-        'cmap': 'PRGn',
-        'color': 'cornflowerblue'
-    }
-} 
+}

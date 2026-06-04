@@ -12,16 +12,16 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from paper.mpi.config import Config
-from paper.mpi.plots.ssp370.utils import load_data, setup_figure, save_plot
-from paper.mpi.plots.historical.utils import load_data as load_historical_data
+from experiments.canesm.config import Config
+from experiments.canesm.plots.ssp370.utils import load_data, setup_figure, save_plot
+from experiments.canesm.plots.historical.utils import load_data as load_historical_data
 
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = 'paper/mpi/plots/ssp370/files'
+OUTPUT_DIR = 'experiments/canesm/plots/ssp370/files'
 DPI = 300
 WIDTH_MULTIPLIER = 3.0
 HEIGHT_MULTIPLIER = 2.0
@@ -35,7 +35,7 @@ HSPACE = 0.01
 
 def load_land_fraction():
     """Load land fraction data for creating regional masks."""
-    land_fraction_filepath = "/home/shahineb/data/cmip6/raw/MPI-ESM1-2-LR/piControl/r1i1p1f1/sftlf/sftlf_fx_MPI-ESM1-2-LR_piControl_r1i1p1f1_gn.nc"
+    land_fraction_filepath = "/home/shahineb/data/products/cmip6/raw/CanESM5/piControl/r1i1p1f1/sftlf/sftlf_fx_CanESM5_piControl_r1i1p1f1_gn.nc"
     land_fraction_ds = xr.open_dataset(land_fraction_filepath)['sftlf']
     return land_fraction_ds
 
@@ -105,8 +105,8 @@ target_data = test_dataset['ssp370'].ds
 test_dataset_hist, pred_samples_hist, _, __ = load_historical_data(config, in_memory=False)
 target_data_hist = test_dataset_hist['historical'].ds
 
-da_cmip6 = xr.concat([target_data_hist[['tas', 'hurs']], target_data[['tas', 'hurs']]], dim='time')
-da_diffusion = xr.concat([pred_samples_hist[['tas', 'hurs']], pred_samples[['tas', 'hurs']]], dim='time')
+da_cmip6 = xr.concat([target_data_hist[['tas', 'pr']], target_data[['tas', 'pr']]], dim='time')
+da_diffusion = xr.concat([pred_samples_hist[['tas', 'pr']], pred_samples[['tas', 'pr']]], dim='time')
 
 # Load land fraction and create regional masks
 land_fraction_ds = load_land_fraction()
@@ -134,7 +134,7 @@ def create_tas_hurs_trends_plot():
         data = region_data[region]
         all_values.extend([data['ub_cmip6'], data['lb_cmip6'], data['ub_emulator'], data['lb_emulator']])
     
-    flat_values = xr.concat(all_values, dim='new')
+    flat_values = xr.concat(all_values, dim='new', coords='minimal')
     vmax = flat_values.quantile(q=0.99, dim=["new", "year"])
     vmin = flat_values.quantile(q=0.01, dim=["new", "year"])
     
@@ -157,14 +157,14 @@ def create_tas_hurs_trends_plot():
     region_titles = ['Land', 'Tropical Ocean', 'Southern Ocean', 'Arctic']
     
     # Plot each variable
-    for i, var in enumerate(['tas', 'hurs']):
+    for i, var in enumerate(['tas', 'pr']):
         for j, (region, title) in enumerate(zip(region_order, region_titles)):
             ax = fig.add_subplot(gs[i, j])
             data = region_data[region]
             color = colors[region]
             
             # Plot CMIP6 ensemble members
-            for ω in range(50):
+            for ω in range(data['ensemble_cmip6'].sizes['member']):
                 ax.plot(time, data['ensemble_cmip6'][var].isel(member=ω).values, 
                        color="gray", lw=0.2, ls='--', alpha=0.2)
             
@@ -181,10 +181,9 @@ def create_tas_hurs_trends_plot():
                 else:
                     ax.yaxis.set_visible(False)
                 ax.set_title(title, weight="bold")
-            else:  # Humidity
+            else:  # Precipitation
                 if j == 0:  # First column
-                    ax.set_ylabel("Relative humidity [%]")
-                    ax.set_yticks([-4, 0])
+                    ax.set_ylabel("Precipitation [mm/day]")
                 else:
                     ax.yaxis.set_visible(False)
             
@@ -241,7 +240,7 @@ def create_tas_hurs_trends_plot():
 def main():
     """Main function to generate temperature and humidity trends plot."""
     fig = create_tas_hurs_trends_plot()
-    save_plot(fig, OUTPUT_DIR, 'tas_hurs_trends.jpg', dpi=DPI)
+    save_plot(fig, OUTPUT_DIR, 'tas_pr_trends.jpg', dpi=DPI)
 
 
 if __name__ == "__main__":
