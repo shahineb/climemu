@@ -12,16 +12,16 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.canesm.config import Config
-from experiments.canesm.plots.ssp370.utils import load_data, setup_figure, save_plot
-from experiments.canesm.plots.historical.utils import load_data as load_historical_data
+from experiments.ipsl.config import Config
+from experiments.ipsl.plots.ssp370.utils import load_data, setup_figure, save_plot
+from experiments.ipsl.plots.historical.utils import load_data as load_historical_data
 
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = 'experiments/canesm/plots/ssp370/files'
+OUTPUT_DIR = 'experiments/ipsl/plots/ssp370/files'
 DPI = 300
 WIDTH_MULTIPLIER = 3.0
 HEIGHT_MULTIPLIER = 2.0
@@ -35,7 +35,7 @@ HSPACE = 0.01
 
 def load_land_fraction():
     """Load land fraction data for creating regional masks."""
-    land_fraction_filepath = "/home/shahineb/data/products/cmip6/raw/CanESM5/piControl/r1i1p1f1/sftlf/sftlf_fx_CanESM5_piControl_r1i1p1f1_gn.nc"
+    land_fraction_filepath = "/home/shahineb/data/products/cmip6/raw/IPSL-CM6A-LR/piControl/r1i1p1f1/sftlf/sftlf_fx_IPSL-CM6A-LR_piControl_r1i1p1f1_gr.nc"
     land_fraction_ds = xr.open_dataset(land_fraction_filepath)['sftlf']
     return land_fraction_ds
 
@@ -105,7 +105,7 @@ target_data = test_dataset['ssp370'].ds
 test_dataset_hist, pred_samples_hist, _, __ = load_historical_data(config, in_memory=False)
 target_data_hist = test_dataset_hist['historical'].ds
 
-da_cmip6 = xr.concat([target_data_hist[['tas', 'pr']], target_data[['tas', 'pr']]], dim='time')
+da_cmip6 = xr.concat([target_data_hist[['tas', 'pr']].isel(member=slice(11)), target_data[['tas', 'pr']]], dim='time')
 da_diffusion = xr.concat([pred_samples_hist[['tas', 'pr']], pred_samples[['tas', 'pr']]], dim='time')
 
 # Load land fraction and create regional masks
@@ -233,7 +233,7 @@ def create_tas_hurs_trends_plot():
             alpha=0.7,
             shading='auto'
         )
-    
+
     return fig
 
 

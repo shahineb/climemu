@@ -1,5 +1,6 @@
 """Shared utilities for plotting scripts."""
 import os
+import glob
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ from dask.diagnostics import ProgressBar
 
 # Module-level path configuration
 CLIMATOLOGY_ROOT = "/home/shahineb/data/products/cmip6/processed"
-CLIMATOLOGY_MODEL = 'CanESM5'
+CLIMATOLOGY_MODEL = 'IPSL-CM6A-LR'
 CLIMATOLOGY_MEMBER = 'r1i1p1f1'
 RAW_CMIP6_ROOT = "/orcd/home/002/shahineb/data/products/cmip6/raw"
 
@@ -42,8 +43,10 @@ def load_data(config, in_memory=False):
 
     raw_base = os.path.join(RAW_CMIP6_ROOT, CLIMATOLOGY_MODEL, 'piControl', CLIMATOLOGY_MEMBER)
     time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
-    piControl_cmip6_tas = xr.open_mfdataset(os.path.join(raw_base, "tas/Amon/*"), decode_times=time_coder, data_vars="all").drop_vars('height')
-    piControl_cmip6_pr = xr.open_mfdataset(os.path.join(raw_base, "pr/Amon/*"), decode_times=time_coder, data_vars="all").astype("float64") * 86400
+    tas_files = sorted(glob.glob(os.path.join(raw_base, "tas/Amon/*")))[:]
+    pr_files = sorted(glob.glob(os.path.join(raw_base, "pr/Amon/*")))[:]
+    piControl_cmip6_tas = xr.open_mfdataset(tas_files, decode_times=time_coder, data_vars="all").drop_vars('height')
+    piControl_cmip6_pr = xr.open_mfdataset(pr_files, decode_times=time_coder, data_vars="all").astype("float64") * 86400
     piControl_cmip6 = xr.merge([
         piControl_cmip6_tas[['tas']],
         piControl_cmip6_pr[['pr']]

@@ -8,7 +8,7 @@ from ...data import load_dataset
 
 # Module-level path configuration
 CLIMATOLOGY_ROOT = '/home/shahineb/data/cmip6/processed'
-CLIMATOLOGY_MODEL = 'CanESM5'
+CLIMATOLOGY_MODEL = 'IPSL-CM6A-LR'
 CLIMATOLOGY_MEMBER = 'r1i1p1f1'
 
 

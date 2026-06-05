@@ -38,7 +38,7 @@ train_loader = DataLoader(
 )
 
 # Output directory for figures
-fig_dir = os.path.join("experiments/canesm/debug_figs")
+fig_dir = os.path.join("experiments/ipsl/debug_figs")
 os.makedirs(fig_dir, exist_ok=True)
 
 # Iterate and visualize batches

@@ -9,16 +9,16 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.canesm.config import Config
-from experiments.canesm.plots.ssp370.utils import load_data, setup_figure, save_plot
-from experiments.canesm.plots.historical.utils import load_data as load_historical_data
+from experiments.ipsl.config import Config
+from experiments.ipsl.plots.ssp370.utils import load_data, setup_figure, save_plot
+from experiments.ipsl.plots.historical.utils import load_data as load_historical_data
 
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = 'experiments/canesm/plots/ssp370/files'
+OUTPUT_DIR = 'experiments/ipsl/plots/ssp370/files'
 DPI = 300
 WIDTH_MULTIPLIER = 4.0
 HEIGHT_MULTIPLIER = 3.0
@@ -86,7 +86,7 @@ target_data = test_dataset['ssp370'].ds
 test_dataset_hist, pred_samples_hist, _, __ = load_historical_data(config, in_memory=False)
 target_data_hist = test_dataset_hist['historical'].ds
 
-da_cmip6 = xr.concat([target_data_hist['pr'], target_data['pr']], dim='time')
+da_cmip6 = xr.concat([target_data_hist['pr'].isel(member=slice(11)), target_data['pr']], dim='time')
 da_diffusion = xr.concat([pred_samples_hist['pr'], pred_samples['pr']], dim='time')
 
 # Process data for Hovmöller diagram

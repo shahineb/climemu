@@ -13,13 +13,13 @@ base_dir = os.path.join(os.getcwd())
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-from experiments.canesm.config import Config
-from experiments.canesm.plots.piControl.utils import load_data, VARIABLES, setup_figure, save_plot
+from experiments.ipsl.config import Config
+from experiments.ipsl.plots.piControl.utils import load_data, VARIABLES, setup_figure, save_plot
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-OUTPUT_DIR = 'experiments/canesm/plots/piControl/files'
+OUTPUT_DIR = 'experiments/ipsl/plots/piControl/files'
 DPI = 300
 WIDTH_MULTIPLIER = 6.0
 HEIGHT_MULTIPLIER = 2.9
