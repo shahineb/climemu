@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 
 from src.utils.collate import numpy_collate
-from experiments.canesm.config import Config
-from experiments.canesm.data import load_dataset, compute_normalization
-from experiments.canesm import utils
+from experiments.ipsl.config import Config
+from experiments.ipsl.data import load_dataset, compute_normalization
+from experiments.ipsl import utils
 
 
 # Load config and dataset
