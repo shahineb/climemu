@@ -8,8 +8,8 @@ Registery of pretrained emulators for usage
 EMULATORS = Registry()
 
 
-def build_emulator(name):
-    model = EMULATORS[name]()
+def build_emulator(name, **kwargs):
+    model = EMULATORS[name](**kwargs)
     return model
 
 

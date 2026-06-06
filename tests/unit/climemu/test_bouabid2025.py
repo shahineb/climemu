@@ -54,7 +54,8 @@ class TestBouabid2025Emulator:
         mock_climatology.__getitem__ = Mock(side_effect=lambda key: Mock(values=np.linspace(-90, 90, 10) if key == 'lat' else np.linspace(0, 360, 20)))
         mock_climatology.data_vars = ['tas', 'pr', 'hurs', 'sfcWind']
         emulator.climatology = mock_climatology
-        
+        emulator._resolve_variables()
+
         # Test properties
         assert np.array_equal(emulator.lat, np.linspace(-90, 90, 10))
         assert np.array_equal(emulator.lon, np.linspace(0, 360, 20))
@@ -69,7 +70,9 @@ class TestBouabid2025Emulator:
         
         # Mock the internal methods
         mock_pattern_scaling.return_value = Mock()
-        mock_climatology.return_value = Mock()
+        mock_clim = Mock()
+        mock_clim.data_vars = ['tas', 'pr', 'hurs', 'sfcWind']
+        mock_climatology.return_value = mock_clim
         mock_precursor.return_value = Mock()
         
         # Call load with default which

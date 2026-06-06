@@ -13,22 +13,41 @@ from .. import EMULATORS
 
 
 class Bouabid2025Emulator(GriddedEmulator):
-    def __init__(self, esm_name: str):
+    def __init__(self, esm_name: str, variables=None):
         self.esm = esm_name
         self.repo_id = "shahineb/climemu"
+        self._vars = variables
 
     def load(self, which: str = "default"):
         # Set files directory in hugging face repo
         self.files_dir = os.path.join(self.esm, which)
 
+        # Load climatology data
+        self.climatology = self._load_climatology()
+
+        # Resolve variable selection
+        self._resolve_variables()
+
         # Load pattern scaling coefficients
         self.β = self._load_pattern_scaling()
 
-        # Load climatology data
-        self.climatology = self._load_climatology()
-    
         # Load the generative model precursor
         self.precursor = self._load_precursor()
+
+    def _resolve_variables(self):
+        # List all available variables
+        all_vars = list(self.climatology.data_vars)
+
+        # If no specific variables are requested, use all available variables
+        if self._vars is None:
+            self._vars = all_vars
+            self._var_idx = list(range(len(all_vars)))
+        # Else, validate the requested variables and get their indices
+        else:
+            invalid = set(self._vars) - set(all_vars)
+            if invalid:
+                raise ValueError(f"Unknown variables: {invalid}. Available: {all_vars}")
+            self._var_idx = [all_vars.index(v) for v in self._vars]
 
     def compile(self, n_samples, n_steps=30):
         # Fix number of samples and steps for generation
@@ -48,6 +67,9 @@ class Bouabid2025Emulator(GriddedEmulator):
         # Generate samples using the diffusion model
         key = jr.PRNGKey(seed) if seed else jr.PRNGKey(np.random.randint(0, 1000000))
         samples = self.generative_model(pattern=pattern, key=key)
+
+        # Subset to requested variables
+        samples = samples[:, self._var_idx]
 
         # Convert to xarray Dataset
         if xarray:
@@ -152,7 +174,7 @@ class Bouabid2025Emulator(GriddedEmulator):
 
     @property
     def vars(self):
-        return list(self.climatology.data_vars)
+        return self._vars
 
 
 @eqx.filter_jit
@@ -184,17 +206,17 @@ def draw_samples_single(nn, schedule, pattern, n_samples, n_steps, μ, σ, outpu
 
 @EMULATORS.register("MPI-ESM1-2-LR")
 class MPIEmulator(Bouabid2025Emulator):
-    def __init__(self, which="default"):
-        super().__init__(esm_name="MPI-ESM1-2-LR")
+    def __init__(self, **kwargs):
+        super().__init__(esm_name="MPI-ESM1-2-LR", **kwargs)
 
 
 @EMULATORS.register("MIROC6")
 class MIROCEmulator(Bouabid2025Emulator):
-    def __init__(self, which="default"):
-        super().__init__(esm_name="MIROC6")
+    def __init__(self, **kwargs):
+        super().__init__(esm_name="MIROC6", **kwargs)
 
 
 @EMULATORS.register("ACCESS-ESM1-5")
 class ACCESSEmulator(Bouabid2025Emulator):
-    def __init__(self, which="default"):
-        super().__init__(esm_name="ACCESS-ESM1-5")
+    def __init__(self, **kwargs):
+        super().__init__(esm_name="ACCESS-ESM1-5", **kwargs)
