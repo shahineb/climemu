@@ -222,13 +222,13 @@ class ACCESSEmulator(Bouabid2025Emulator):
         super().__init__(esm_name="ACCESS-ESM1-5", **kwargs)
 
 
-@EMULATORS.register("ACCESS-ESM1-5")
+@EMULATORS.register("CanESM5")
 class CanESMEmulator(Bouabid2025Emulator):
     def __init__(self, **kwargs):
         super().__init__(esm_name="CanESM5", **kwargs)
 
 
-@EMULATORS.register("ACCESS-ESM1-5")
+@EMULATORS.register("IPSL-CM6A-LR")
 class IPSLEmulator(Bouabid2025Emulator):
     def __init__(self, **kwargs):
         super().__init__(esm_name="IPSL-CM6A-LR", **kwargs)
