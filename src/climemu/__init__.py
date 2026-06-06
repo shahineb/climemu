@@ -1,6 +1,6 @@
 from climemu.utils import Registry
 
-__version__ = "0.1.9"
+__version__ = "0.1.10"
 
 """
 Registery of pretrained emulators for usage
