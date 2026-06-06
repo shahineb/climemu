@@ -220,3 +220,15 @@ class MIROCEmulator(Bouabid2025Emulator):
 class ACCESSEmulator(Bouabid2025Emulator):
     def __init__(self, **kwargs):
         super().__init__(esm_name="ACCESS-ESM1-5", **kwargs)
+
+
+@EMULATORS.register("ACCESS-ESM1-5")
+class CanESMEmulator(Bouabid2025Emulator):
+    def __init__(self, **kwargs):
+        super().__init__(esm_name="CanESM5", **kwargs)
+
+
+@EMULATORS.register("ACCESS-ESM1-5")
+class IPSLEmulator(Bouabid2025Emulator):
+    def __init__(self, **kwargs):
+        super().__init__(esm_name="IPSL-CM6A-LR", **kwargs)
