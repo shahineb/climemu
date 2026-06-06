@@ -42,10 +42,14 @@ samples = emulator(gmst=2,       # GMST anomaly wrt piControl (°C)
 
 ## Citing
 ```bibtex
-@article{bouabid2025score,
+@article{bouabid2026score,
   title={Score-based generative emulation of impact-relevant Earth system model outputs},
-  author={Bouabid, Shahine and Souza, Andre N and Ferrari, Raffaele},
-  journal={arXiv preprint arXiv:2510.04358},
-  year={2025}
+  author={Bouabid, Shahine and Souza, Andre Nogueira and Ferrari, Raffaele},
+  journal={Journal of Advances in Modeling Earth Systems},
+  volume={18},
+  number={3},
+  pages={e2025MS005558},
+  year={2026},
+  publisher={Wiley Online Library}
 }
 ```
