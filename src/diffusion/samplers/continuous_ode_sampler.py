@@ -12,8 +12,8 @@ import diffrax as dfx
 from functools import partial
 
 
-class ContinuousHeunSampler:
-    def __init__(self, schedule, model, data_shape):
+class ContinuousODESampler:
+    def __init__(self, schedule, model, data_shape, solver=None, dtype=None):
         """
         Initializes the sampler with a noise schedule, denoising model, and data shape.
 
@@ -21,15 +21,22 @@ class ContinuousHeunSampler:
             schedule: Noise schedule object with σ(t), g2(t), σmax, and get_timesteps().
             model: Denoising model, expects input of shape data_shape and noise scale σ.
             data_shape: Shape of the data to be sampled (tuple).
+            solver: diffrax solver instance (default: Heun).
+            dtype: Optional dtype for computation (e.g. jnp.bfloat16).
         """
+        self.solver = solver or dfx.Heun()
+        self.dtype = dtype
         @eqx.filter_jit
-        def denoiser_precursor(model, data_shape, x, σ):
+        def denoiser_precursor(model, data_shape, dtype, x, σ):
             """
             Handles the fact that diffrax requires flat arrays.
             """
             xr = jnp.reshape(x, data_shape)
+            if dtype is not None:
+                xr = xr.astype(dtype)
+                σ = σ.astype(dtype)
             denoised_x = model(xr, σ)
-            return jnp.reshape(denoised_x, (math.prod(data_shape)))
+            return jnp.reshape(denoised_x, (math.prod(data_shape))).astype(x.dtype)
 
         @eqx.filter_jit
         def drift_precursor(denoiser, schedule, x, t):
@@ -41,10 +48,9 @@ class ContinuousHeunSampler:
             scaling = 1 + σ
             prefactor = g2 / (2 * σ**2)
             scaled_score = denoiser(x / scaling, σ) - x
-            drift = - prefactor * scaled_score
-            return drift
+            return - prefactor * scaled_score
 
-        denoiser = partial(denoiser_precursor, model, data_shape)
+        denoiser = partial(denoiser_precursor, model, data_shape, dtype)
         drift = partial(drift_precursor, denoiser, schedule)
         self.schedule = schedule
         self.data_shape = data_shape
@@ -68,7 +74,7 @@ class ContinuousHeunSampler:
         f = dfx.ODETerm(drift_diffrax_signature)
         solversteps = dfx.StepTo(timesteps)
         sol = dfx.diffeqsolve(terms=f,
-                              solver=dfx.Heun(),
+                              solver=self.solver,
                               t0=jnp.max(timesteps),
                               t1=jnp.min(timesteps),
                               stepsize_controller=solversteps,
@@ -89,7 +95,7 @@ class ContinuousHeunSampler:
         Returns:
             samples: Array of generated samples with shape (N, *data_shape).
         """
-        # Draw initial Gausssian noise samples from N(0, σmax²)
+        # Draw initial Gaussian noise samples from N(0, σmax²)
         keys = jax.random.split(key, N)
         x0 = jr.normal(keys[0], (N, math.prod(self.data_shape))) * self.schedule.σmax
 
@@ -101,3 +107,7 @@ class ContinuousHeunSampler:
         samples = jax.vmap(sampler)(x0)
         samples = jnp.reshape(samples, (N, *self.data_shape))
         return samples
+
+
+# Backward compatibility
+ContinuousHeunSampler = ContinuousODESampler

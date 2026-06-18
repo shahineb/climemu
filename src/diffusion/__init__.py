@@ -12,7 +12,9 @@ from .schedules import (
 )
 
 from .samplers import (
-    ContinuousHeunSampler
+    ContinuousODESampler,
+    ContinuousHeunSampler,
+    DPMSolverVE
 )
 
 
@@ -21,5 +23,7 @@ __all__ = [
     "denoising_make_step",
     "denoising_batch_loss",
     "ContinuousVESchedule",
-    "ContinuousHeunSampler"
+    "ContinuousODESampler",
+    "ContinuousHeunSampler",
+    "DPMSolverVE"
 ]

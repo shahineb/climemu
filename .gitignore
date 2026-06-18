@@ -198,3 +198,11 @@ wandb/
 
 # OS generated files
 .DS_Store
+
+# Claude context files (personal working files)
+.claude/scratchpad.md
+.claude/handoff.md
+.claude/errors.md
+.claude/activity.log
+.claude/archive/
+.claude/learnings.md

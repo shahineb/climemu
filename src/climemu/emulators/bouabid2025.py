@@ -1,13 +1,14 @@
 import os
 import yaml
 from functools import partial
+import jax
 import xarray as xr
 import numpy as np
 import jax.numpy as jnp
 import jax.random as jr
 import equinox as eqx
 from huggingface_hub import hf_hub_download
-from diffusion import HealPIXUNet, ContinuousVESchedule, ContinuousHeunSampler
+from diffusion import HealPIXUNet, ContinuousVESchedule, ContinuousODESampler, DPMSolverVE
 from .abstractemulator import GriddedEmulator
 from .. import EMULATORS
 
@@ -18,7 +19,7 @@ class Bouabid2025Emulator(GriddedEmulator):
         self.repo_id = "shahineb/climemu"
         self._vars = variables
 
-    def load(self, which: str = "default"):
+    def load(self, which: str = "default", dtype=None):
         # Set files directory in hugging face repo
         self.files_dir = os.path.join(self.esm, which)
 
@@ -32,7 +33,7 @@ class Bouabid2025Emulator(GriddedEmulator):
         self.β = self._load_pattern_scaling()
 
         # Load the generative model precursor
-        self.precursor = self._load_precursor()
+        self.precursor = self._load_precursor(dtype=dtype)
 
     def _resolve_variables(self):
         # List all available variables
@@ -49,11 +50,14 @@ class Bouabid2025Emulator(GriddedEmulator):
                 raise ValueError(f"Unknown variables: {invalid}. Available: {all_vars}")
             self._var_idx = [all_vars.index(v) for v in self._vars]
 
-    def compile(self, n_samples, n_steps=30):
+    def compile(self, n_samples, n_steps=30, solver=None, sampler_cls=None, t_start=None):
         # Fix number of samples and steps for generation
         self.generative_model = partial(self.precursor,
                                         n_samples=n_samples,
-                                        n_steps=n_steps)
+                                        n_steps=n_steps,
+                                        solver=solver,
+                                        sampler_cls=sampler_cls,
+                                        t_start=t_start)
 
         # Perform a dry run to compile the JAX functions (important for performance)
         dummy_pattern = jnp.zeros((self.nlat, self.nlon))
@@ -86,7 +90,7 @@ class Bouabid2025Emulator(GriddedEmulator):
             )
         return samples
 
-    def _load_precursor(self):
+    def _load_precursor(self, dtype=None):
         # Build the neural network and noise schedule
         config = self._load_config()
         nn = self._load_nn(config)
@@ -95,7 +99,13 @@ class Bouabid2025Emulator(GriddedEmulator):
         # Load normalization statistics used during training (needed to denormalize the generated samples)
         μ, σ = self._load_normalization()
 
-        # Define the output size for the generated samples 
+        # Cast to requested dtype (e.g. bfloat16 for faster CPU inference)
+        if dtype is not None:
+            _cast = lambda x: x.astype(dtype) if eqx.is_array(x) and jnp.issubdtype(x.dtype, jnp.floating) else x
+            nn = jax.tree.map(_cast, nn)
+            μ, σ = _cast(μ), _cast(σ)
+
+        # Define the output size for the generated samples
         output_size = (config['out_channels'], config['input_size'][1], config['input_size'][2])
 
         # Create an precursor for the generative model
@@ -103,7 +113,8 @@ class Bouabid2025Emulator(GriddedEmulator):
                             nn=nn,
                             schedule=schedule,
                             output_size=output_size,
-                            μ=μ, σ=σ)
+                            μ=μ, σ=σ,
+                            dtype=dtype)
         return precursor
 
     def _load_config(self):
@@ -188,19 +199,32 @@ def denormalize(x, μ, σ):
     return σ * x + μ
 
 
-def create_sampler(nn, schedule, pattern, μ, σ, output_size):
+def create_sampler(nn, schedule, pattern, μ, σ, output_size, solver=None, dtype=None, sampler_cls=None):
     """Create a sampler for a given pattern."""
+    if dtype is not None:
+        pattern = pattern.astype(dtype)
     context = normalize(pattern, μ[-1], σ[-1])[None, ...]
     def nn_with_context(x, t):
         x = jnp.concatenate((x, context), axis=0)
         return nn(x, t)
-    return ContinuousHeunSampler(schedule, nn_with_context, output_size)
+    if sampler_cls is DPMSolverVE:
+        order = 2 if solver == "dpm2" else 1
+        return DPMSolverVE(schedule, nn_with_context, output_size, order=order, dtype=dtype)
+    return ContinuousODESampler(schedule, nn_with_context, output_size, solver=solver, dtype=dtype)
 
 @eqx.filter_jit
-def draw_samples_single(nn, schedule, pattern, n_samples, n_steps, μ, σ, output_size, key=jr.PRNGKey(0)):
+def draw_samples_single(nn, schedule, pattern, n_samples, n_steps, μ, σ, output_size, solver=None, dtype=None, sampler_cls=None, t_start=None, key=jr.PRNGKey(0)):
     """Draw samples for a given pattern."""
-    sampler = create_sampler(nn, schedule, pattern, μ, σ, output_size)
-    samples = sampler.sample(n_samples, steps=n_steps, key=key)
+    sampler = create_sampler(nn, schedule, pattern, μ, σ, output_size, solver=solver, dtype=dtype, sampler_cls=sampler_cls)
+
+    # Truncated diffusion: warm-start (DPM-Solver only)
+    kwargs = {}
+    if t_start is not None and sampler_cls is DPMSolverVE:
+        import math
+        mean_flat = jnp.zeros(math.prod(output_size))
+        kwargs["warm_start"] = (mean_flat, t_start)
+
+    samples = sampler.sample(n_samples, steps=n_steps, key=key, **kwargs)
     return denormalize(samples, μ[:-1], σ[:-1])
 
 
