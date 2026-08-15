@@ -1,1 +1,1 @@
-from .bouabid2025 import Bouabid2025Emulator
+from .bouabid2026 import Bouabid2026Emulator

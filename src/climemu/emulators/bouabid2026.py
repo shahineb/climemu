@@ -7,12 +7,12 @@ import jax.numpy as jnp
 import jax.random as jr
 import equinox as eqx
 from huggingface_hub import hf_hub_download
-from diffusion import HealPIXUNet, ContinuousVESchedule, ContinuousHeunSampler
+from diffusion import HealPIXUNetv1, ContinuousVESchedule, ContinuousHeunSampler
 from .abstractemulator import GriddedEmulator
 from .. import EMULATORS
 
 
-class Bouabid2025Emulator(GriddedEmulator):
+class Bouabid2026Emulator(GriddedEmulator):
     def __init__(self, esm_name: str, variables=None):
         self.esm = esm_name
         self.repo_id = "shahineb/climemu"
@@ -40,7 +40,6 @@ class Bouabid2025Emulator(GriddedEmulator):
 
         # If no specific variables are requested, use all available variables
         if self._vars is None:
-            self._vars = all_vars
             self._var_idx = list(range(len(all_vars)))
         # Else, validate the requested variables, get their indices and subset climatology
         else:
@@ -141,15 +140,15 @@ class Bouabid2025Emulator(GriddedEmulator):
         to_latlon = jnp.array(edges_data['to_latlon']).astype(jnp.int32)
 
         # Initialize the neural network
-        nn = HealPIXUNet(input_size=config['input_size'],
-                         nside=config['nside'],
-                         enc_filters=config['enc_filters'],
-                         dec_filters=config['dec_filters'],
-                         out_channels=config['out_channels'],
-                         temb_dim=config['temb_dim'],
-                         healpix_emb_dim=config['healpix_emb_dim'],
-                         edges_to_healpix=to_healpix,
-                         edges_to_latlon=to_latlon)
+        nn = HealPIXUNetv1(input_size=config['input_size'],
+                           nside=config['nside'],
+                           enc_filters=config['enc_filters'],
+                           dec_filters=config['dec_filters'],
+                           out_channels=config['out_channels'],
+                           temb_dim=config['temb_dim'],
+                           healpix_emb_dim=config['healpix_emb_dim'],
+                           edges_to_healpix=to_healpix,
+                           edges_to_latlon=to_latlon)
 
         # Load the pre-trained weights from the saved model file
         weights_path = hf_hub_download(self.repo_id, f"{self.files_dir}/weights.eqx")
@@ -175,6 +174,8 @@ class Bouabid2025Emulator(GriddedEmulator):
 
     @property
     def vars(self):
+        if self._vars is None:
+            return list(self.climatology.data_vars)
         return self._vars
 
 
@@ -206,30 +207,30 @@ def draw_samples_single(nn, schedule, pattern, n_samples, n_steps, μ, σ, outpu
 
 
 @EMULATORS.register("MPI-ESM1-2-LR")
-class MPIEmulator(Bouabid2025Emulator):
+class MPIEmulator(Bouabid2026Emulator):
     def __init__(self, **kwargs):
         super().__init__(esm_name="MPI-ESM1-2-LR", **kwargs)
 
 
 @EMULATORS.register("MIROC6")
-class MIROCEmulator(Bouabid2025Emulator):
+class MIROCEmulator(Bouabid2026Emulator):
     def __init__(self, **kwargs):
         super().__init__(esm_name="MIROC6", **kwargs)
 
 
 @EMULATORS.register("ACCESS-ESM1-5")
-class ACCESSEmulator(Bouabid2025Emulator):
+class ACCESSEmulator(Bouabid2026Emulator):
     def __init__(self, **kwargs):
         super().__init__(esm_name="ACCESS-ESM1-5", **kwargs)
 
 
 @EMULATORS.register("CanESM5")
-class CanESMEmulator(Bouabid2025Emulator):
+class CanESMEmulator(Bouabid2026Emulator):
     def __init__(self, **kwargs):
         super().__init__(esm_name="CanESM5", **kwargs)
 
 
 @EMULATORS.register("IPSL-CM6A-LR")
-class IPSLEmulator(Bouabid2025Emulator):
+class IPSLEmulator(Bouabid2026Emulator):
     def __init__(self, **kwargs):
         super().__init__(esm_name="IPSL-CM6A-LR", **kwargs)

@@ -13,5 +13,5 @@ def build_emulator(name, **kwargs):
     return model
 
 
-from .emulators import Bouabid2025Emulator
-__all__ = ['build_emulator', 'Bouabid2025Emulator']
+from .emulators import Bouabid2026Emulator
+__all__ = ['build_emulator', 'Bouabid2026Emulator']

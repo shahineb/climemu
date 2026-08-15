@@ -9,6 +9,14 @@ from .conv import (
     HealPIXFacetConvTransposeBlock
 )
 
+from .attention import HealPIXAttention
+
+from .resnet import (
+    HealPIXResnetBlockDown,
+    HealPIXResnetBlockUp,
+    HealPIXResnetBlock
+)
+
 __all__ = [
     "HealPIXConv",
     "HealPIXConvTranspose",
@@ -17,5 +25,9 @@ __all__ = [
     "HealPIXFacetConv",
     "HealPIXFacetConvTranspose",
     "HealPIXFacetConvBlock",
-    "HealPIXFacetConvTransposeBlock"
+    "HealPIXFacetConvTransposeBlock",
+    "HealPIXAttention",
+    "HealPIXResnetBlockDown",
+    "HealPIXResnetBlockUp",
+    "HealPIXResnetBlock"
 ]

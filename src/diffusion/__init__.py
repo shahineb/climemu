@@ -1,5 +1,5 @@
 from .nn import (
-    HealPIXUNet
+    HealPIXUNetv1
 )
 
 from .losses import (
@@ -17,7 +17,7 @@ from .samplers import (
 
 
 __all__ = [
-    "HealPIXUNet",
+    "HealPIXUNetv1",
     "denoising_make_step",
     "denoising_batch_loss",
     "ContinuousVESchedule",

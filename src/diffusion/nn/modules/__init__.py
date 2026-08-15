@@ -12,13 +12,16 @@ from .healpix import (
     HealPIXFacetConv,
     HealPIXFacetConvTranspose,
     HealPIXFacetConvBlock,
-    HealPIXFacetConvTransposeBlock
+    HealPIXFacetConvTransposeBlock,
+    HealPIXAttention,
+    HealPIXResnetBlockDown,
+    HealPIXResnetBlockUp,
+    HealPIXResnetBlock
 )
 
 __all__ = [
     # remap
     "BipartiteRemap",
-    "BipartiteSpatialRemap",
 
     # healpix
     "HealPIXConv",
@@ -29,4 +32,8 @@ __all__ = [
     "HealPIXFacetConvTranspose",
     "HealPIXFacetConvBlock",
     "HealPIXFacetConvTransposeBlock",
+    "HealPIXAttention",
+    "HealPIXResnetBlockDown",
+    "HealPIXResnetBlockUp",
+    "HealPIXResnetBlock",
 ]
