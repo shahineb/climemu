@@ -84,7 +84,7 @@ uv run -m paper.mpi.inference.piControl
 
 # Future scenarios
 uv run -m paper.mpi.inference.ssp245
-uv run -m paper.mpi.inference.ssp270
+uv run -m paper.mpi.inference.ssp370
 ```
 
 
