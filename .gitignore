@@ -189,6 +189,9 @@ cython_debug/
 # VS Code
 .vscode/
 
+# Claude
+.claude/
+
 # Wandb
 wandb/
 *.interactive

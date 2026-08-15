@@ -42,12 +42,13 @@ class Bouabid2025Emulator(GriddedEmulator):
         if self._vars is None:
             self._vars = all_vars
             self._var_idx = list(range(len(all_vars)))
-        # Else, validate the requested variables and get their indices
+        # Else, validate the requested variables, get their indices and subset climatology
         else:
             invalid = set(self._vars) - set(all_vars)
             if invalid:
                 raise ValueError(f"Unknown variables: {invalid}. Available: {all_vars}")
             self._var_idx = [all_vars.index(v) for v in self._vars]
+            self.climatology = self.climatology[self._vars]
 
     def compile(self, n_samples, n_steps=30):
         # Fix number of samples and steps for generation
