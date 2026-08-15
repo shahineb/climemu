@@ -10,18 +10,31 @@ class TestBuildEmulator:
 
     def test_build_emulator_with_valid_name(self):
         """Test build_emulator with a valid registered emulator name."""
-        # Mock the EMULATORS registry
         mock_emulator_class = Mock()
         mock_emulator_instance = Mock()
         mock_emulator_class.return_value = mock_emulator_instance
-        
-        with patch('climemu.EMULATORS', {'MPI-ESM1-2-LR': mock_emulator_class}):
+
+        with patch('climemu.EMULATORS', {('MPI-ESM1-2-LR', 'monthly'): mock_emulator_class}):
             result = build_emulator('MPI-ESM1-2-LR')
-            
-            # Verify the emulator class was called
+
             mock_emulator_class.assert_called_once()
-            # Verify the correct instance was returned
             assert result == mock_emulator_instance
+
+    def test_build_emulator_with_frequency(self):
+        """Test build_emulator with explicit frequency parameter."""
+        mock_monthly = Mock(return_value=Mock(name="monthly"))
+        mock_daily = Mock(return_value=Mock(name="daily"))
+
+        registry = {
+            ('MPI-ESM1-2-LR', 'monthly'): mock_monthly,
+            ('MPI-ESM1-2-LR', 'daily'): mock_daily,
+        }
+        with patch('climemu.EMULATORS', registry):
+            monthly = build_emulator('MPI-ESM1-2-LR', frequency='monthly')
+            mock_monthly.assert_called_once()
+
+            daily = build_emulator('MPI-ESM1-2-LR', frequency='daily')
+            mock_daily.assert_called_once()
 
     def test_build_emulator_with_keyerror(self):
         """Test build_emulator with an unregistered emulator name."""
@@ -34,8 +47,8 @@ class TestBuildEmulator:
         class TestEmulator:
             def __init__(self):
                 self.name = "test_emulator"
-        
-        with patch('climemu.EMULATORS', {'test': TestEmulator}):
+
+        with patch('climemu.EMULATORS', {('test', 'monthly'): TestEmulator}):
             result = build_emulator('test')
             assert isinstance(result, TestEmulator)
             assert result.name == "test_emulator"

@@ -8,10 +8,10 @@ Registery of pretrained emulators for usage
 EMULATORS = Registry()
 
 
-def build_emulator(name, **kwargs):
-    model = EMULATORS[name](**kwargs)
+def build_emulator(name, frequency="monthly", **kwargs):
+    model = EMULATORS[(name, frequency)](**kwargs)
     return model
 
 
-from .emulators import Bouabid2026Emulator
-__all__ = ['build_emulator', 'Bouabid2026Emulator']
+from .emulators import Bouabid2026MonthlyEmulator, Bouabid2026DailyEmulator
+__all__ = ['build_emulator', 'Bouabid2026MonthlyEmulator', 'Bouabid2026DailyEmulator']

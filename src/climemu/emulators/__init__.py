@@ -1,1 +1,2 @@
-from .bouabid2026 import Bouabid2026Emulator
+from .bouabid2026_monthly import Bouabid2026MonthlyEmulator
+from .bouabid2026_daily import Bouabid2026DailyEmulator

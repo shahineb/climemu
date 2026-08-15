@@ -1,17 +1,17 @@
-"""Integration tests for Bouabid2026Emulator with MPI-ESM1-2-LR data."""
+"""Integration tests for Bouabid2026MonthlyEmulator with MPI-ESM1-2-LR data."""
 
 import numpy as np
 import jax.numpy as jnp
 import xarray as xr
-from climemu.emulators.bouabid2026 import Bouabid2026Emulator
+from climemu.emulators.bouabid2026_monthly import Bouabid2026MonthlyEmulator
 
 
-class TestBouabid2026EmulatorMPIESM1_2_LR:
-    """Integration test cases for the Bouabid2026Emulator with MPI-ESM1-2-LR data."""
+class TestBouabid2026MonthlyEmulatorMPIESM1_2_LR:
+    """Integration test cases for the Bouabid2026MonthlyEmulator with MPI-ESM1-2-LR data."""
 
     def test_load_method_downloads_files_from_huggingface(self):
         """Test that load method downloads files from Hugging Face platform."""
-        emulator = Bouabid2026Emulator("MPI-ESM1-2-LR")
+        emulator = Bouabid2026MonthlyEmulator("MPI-ESM1-2-LR")
         
         # This test will actually try to download from Hugging Face
         # It should succeed if the files exist, or raise an appropriate error
@@ -25,7 +25,7 @@ class TestBouabid2026EmulatorMPIESM1_2_LR:
             assert hasattr(emulator, 'precursor')
             
             # Verify files_dir is set correctly
-            assert emulator.files_dir == "MPI-ESM1-2-LR/default"
+            assert emulator.files_dir == "MPI-ESM1-2-LR/monthly/default"
             
         except Exception as e:
             # If download fails, verify it's a network/file not found error
@@ -36,7 +36,7 @@ class TestBouabid2026EmulatorMPIESM1_2_LR:
 
     def test_load_method_with_real_data_validation(self):
         """Test that load method works with real data and validates all components."""
-        emulator = Bouabid2026Emulator("MPI-ESM1-2-LR")
+        emulator = Bouabid2026MonthlyEmulator("MPI-ESM1-2-LR")
         
         try:
             emulator.load()
@@ -97,7 +97,7 @@ class TestBouabid2026EmulatorMPIESM1_2_LR:
 
     def test_compile_and_generate_samples_shape(self):
         """Test that compiled emulator generates samples with correct shape."""
-        emulator = Bouabid2026Emulator("MPI-ESM1-2-LR")
+        emulator = Bouabid2026MonthlyEmulator("MPI-ESM1-2-LR")
         
         try:
             # Load the emulator
@@ -130,7 +130,7 @@ class TestBouabid2026EmulatorMPIESM1_2_LR:
 
     def test_generate_samples_with_xarray_output(self):
         """Test that emulator generates xarray Dataset when xarray=True."""
-        emulator = Bouabid2026Emulator("MPI-ESM1-2-LR")
+        emulator = Bouabid2026MonthlyEmulator("MPI-ESM1-2-LR")
         
         try:
             # Load and compile the emulator
