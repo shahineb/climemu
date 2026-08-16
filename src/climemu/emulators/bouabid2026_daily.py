@@ -9,6 +9,7 @@ import equinox as eqx
 from huggingface_hub import hf_hub_download
 from diffusion import HealPIXUNetv2, ContinuousVESchedule, ContinuousHeunSampler
 from .abstractemulator import GriddedEmulator
+from ..utils.datetime import parse_doy
 from .. import EMULATORS
 
 
@@ -54,14 +55,14 @@ class Bouabid2026DailyEmulator(GriddedEmulator):
         dummy_doy = jnp.array(1.0)
         _ = self.generative_model(pattern=dummy_pattern, doy=dummy_doy, key=jr.PRNGKey(0))
 
-    def __call__(self, gmst, doy, seed=None, xarray=False):
+    def __call__(self, gmst, doy: int | str, seed=None, xarray=False):
         # Apply annual pattern scaling: pattern = β₁ * ΔT + β₀
         pattern = self.β[:, 1] * gmst + self.β[:, 0]
         pattern = pattern.reshape((self.nlat, self.nlon))
 
         # Generate samples using the diffusion model
         key = jr.PRNGKey(seed) if seed else jr.PRNGKey(np.random.randint(0, 1000000))
-        doy = jnp.array(float(doy))
+        doy = jnp.array(float(parse_doy(doy)))
         samples = self.generative_model(pattern=pattern, doy=doy, key=key)
 
         # Subset to requested variables

@@ -1,84 +1,40 @@
-"""Tests for Bouabid2026MonthlyEmulator core functionality."""
+"""Unit tests for emulator lifecycle — load/compile ordering and path construction."""
 
 import pytest
-import numpy as np
 import jax.numpy as jnp
 from unittest.mock import Mock, patch
 from climemu.emulators.bouabid2026_monthly import Bouabid2026MonthlyEmulator
 
 
-class TestBouabid2026MonthlyEmulator:
-    """Test cases for the Bouabid2026MonthlyEmulator class."""
-
-    def test_initialization(self):
-        """Test Bouabid2026MonthlyEmulator initialization."""
+class TestEmulatorLifecycle:
+    def test_call_without_load_raises(self):
         emulator = Bouabid2026MonthlyEmulator("test_esm")
-        
-        assert emulator.esm == "test_esm"
-        assert emulator.repo_id == "shahineb/climemu"
-
-    def test_load_method_raises_error_without_files(self):
-        """Test that load method raises error when files don't exist."""
-        emulator = Bouabid2026MonthlyEmulator("test_esm")
-        
-        # This should raise an error since the files don't exist
-        with pytest.raises(Exception):  # Could be FileNotFoundError, HTTPError, etc.
-            emulator.load()
-
-    def test_call_method_without_load_raises_error(self):
-        """Test that __call__ fails if load hasn't been called first."""
-        emulator = Bouabid2026MonthlyEmulator("test_esm")
-        
         with pytest.raises(AttributeError):
             emulator(gmst=2.0, month=3)
 
-    def test_call_method_without_compile_raises_error(self):
-        """Test that __call__ fails if compile hasn't been called first."""
+    def test_call_without_compile_raises(self):
         emulator = Bouabid2026MonthlyEmulator("test_esm")
         emulator.β = jnp.ones((12, 9, 2))
-        
-        # Mock climatology properly
-        mock_climatology = Mock()
-        mock_climatology.__getitem__ = Mock(return_value=Mock(values=np.array([1, 2, 3])))
-        emulator.climatology = mock_climatology
-        
+        mock_clim = Mock()
+        mock_clim.__getitem__ = Mock(return_value=Mock(values=jnp.array([1, 2, 3])))
+        emulator.climatology = mock_clim
         with pytest.raises(AttributeError):
             emulator(gmst=2.0, month=3)
-
-    def test_properties_after_load(self):
-        """Test properties after loading."""
-        emulator = Bouabid2026MonthlyEmulator("test_esm")
-        
-        # Mock climatology properly
-        mock_climatology = Mock()
-        mock_climatology.__getitem__ = Mock(side_effect=lambda key: Mock(values=np.linspace(-90, 90, 10) if key == 'lat' else np.linspace(0, 360, 20)))
-        mock_climatology.data_vars = ['tas', 'pr', 'hurs', 'sfcWind']
-        emulator.climatology = mock_climatology
-        emulator._resolve_variables()
-
-        # Test properties
-        assert np.array_equal(emulator.lat, np.linspace(-90, 90, 10))
-        assert np.array_equal(emulator.lon, np.linspace(0, 360, 20))
-        assert emulator.vars == ['tas', 'pr', 'hurs', 'sfcWind']
 
     @patch('climemu.emulators.bouabid2026_monthly.Bouabid2026MonthlyEmulator._load_precursor')
     @patch('climemu.emulators.bouabid2026_monthly.Bouabid2026MonthlyEmulator._load_climatology')
     @patch('climemu.emulators.bouabid2026_monthly.Bouabid2026MonthlyEmulator._load_pattern_scaling')
-    def test_load_method_sets_files_dir_correctly(self, mock_pattern_scaling, mock_climatology, mock_precursor):
-        """Test that load method sets files_dir correctly using mocked data."""
-        emulator = Bouabid2026MonthlyEmulator("test_esm")
-        
-        # Mock the internal methods
-        mock_pattern_scaling.return_value = Mock()
-        mock_clim = Mock()
-        mock_clim.data_vars = ['tas', 'pr', 'hurs', 'sfcWind']
-        mock_climatology.return_value = mock_clim
+    def test_load_sets_files_dir(self, mock_ps, mock_clim, mock_precursor):
+        mock_ps.return_value = Mock()
+        mock_ds = Mock()
+        mock_ds.data_vars = ['tas', 'pr', 'hurs', 'sfcWind']
+        mock_clim.return_value = mock_ds
         mock_precursor.return_value = Mock()
-        
-        # Call load with default which
+
+        emulator = Bouabid2026MonthlyEmulator("test_esm")
+
         emulator.load()
         assert emulator.files_dir == "test_esm/monthly/default"
-        
-        # Call load with custom which
+
         emulator.load(which="paper")
         assert emulator.files_dir == "test_esm/monthly/paper"

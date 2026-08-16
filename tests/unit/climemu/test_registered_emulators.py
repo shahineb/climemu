@@ -1,105 +1,87 @@
-"""Tests for registered emulator classes."""
+"""Tests for emulator registration, factory function, and user-facing input validation."""
 
-from climemu.emulators.bouabid2026_monthly import (
-    Bouabid2026MonthlyEmulator,
-    MPIMonthlyEmulator,
-    MIROCMonthlyEmulator,
-    ACCESSMonthlyEmulator
-)
-from climemu.emulators.bouabid2026_daily import (
-    Bouabid2026DailyEmulator,
-    MPIDailyEmulator
-)
+import pytest
+from unittest.mock import Mock
+from climemu import build_emulator, EMULATORS
+from climemu.emulators.bouabid2026_monthly import Bouabid2026MonthlyEmulator
+from climemu.emulators.bouabid2026_daily import Bouabid2026DailyEmulator
 
 
-class TestBouabid2026MonthlyEmulator:
-    """Test cases for the Bouabid2026MonthlyEmulator class."""
-
-    def test_bouabid2026_emulator_initialization(self):
-        """Test Bouabid2026MonthlyEmulator initialization."""
-        emulator = Bouabid2026MonthlyEmulator("test_esm")
-        
-        assert emulator.esm == "test_esm"
-        assert emulator.repo_id == "shahineb/climemu"
-
-    def test_bouabid2026_emulator_initialization_default_which(self):
-        """Test Bouabid2026MonthlyEmulator initialization with default which parameter."""
-        emulator = Bouabid2026MonthlyEmulator("test_esm")
-        
-        assert emulator.esm == "test_esm"
-        assert emulator.repo_id == "shahineb/climemu"
+# All ESM/frequency pairs that should be registered
+MONTHLY_ESMS = ["MPI-ESM1-2-LR", "MIROC6", "ACCESS-ESM1-5", "CanESM5", "IPSL-CM6A-LR"]
+DAILY_ESMS = ["MPI-ESM1-2-LR"]
 
 
-class TestMPIMonthlyEmulator:
-    """Test cases for the MPIMonthlyEmulator class."""
+class TestRegistration:
+    @pytest.mark.parametrize("esm", MONTHLY_ESMS)
+    def test_monthly_esm_registered(self, esm):
+        assert (esm, "monthly") in EMULATORS
 
-    def test_mpi_emulator_initialization(self):
-        """Test MPIMonthlyEmulator initialization."""
-        emulator = MPIMonthlyEmulator()
-        
-        assert emulator.esm == "MPI-ESM1-2-LR"
-        assert emulator.repo_id == "shahineb/climemu"
+    @pytest.mark.parametrize("esm", DAILY_ESMS)
+    def test_daily_esm_registered(self, esm):
+        assert (esm, "daily") in EMULATORS
 
-    def test_mpi_emulator_inheritance(self):
-        """Test that MPIMonthlyEmulator inherits from Bouabid2026MonthlyEmulator."""
-        emulator = MPIMonthlyEmulator()
+    @pytest.mark.parametrize("esm", MONTHLY_ESMS)
+    def test_build_monthly_returns_correct_type(self, esm):
+        emulator = build_emulator(esm)
         assert isinstance(emulator, Bouabid2026MonthlyEmulator)
+        assert emulator.esm == esm
 
-
-class TestMIROCMonthlyEmulator:
-    """Test cases for the MIROCMonthlyEmulator class."""
-
-    def test_miroc_emulator_initialization(self):
-        """Test MIROCMonthlyEmulator initialization."""
-        emulator = MIROCMonthlyEmulator()
-        
-        assert emulator.esm == "MIROC6"
-        assert emulator.repo_id == "shahineb/climemu"
-
-    def test_miroc_emulator_inheritance(self):
-        """Test that MIROCMonthlyEmulator inherits from Bouabid2026MonthlyEmulator."""
-        emulator = MIROCMonthlyEmulator()
-        assert isinstance(emulator, Bouabid2026MonthlyEmulator)
-
-
-class TestACCESSMonthlyEmulator:
-    """Test cases for the ACCESSMonthlyEmulator class."""
-
-    def test_access_emulator_initialization(self):
-        """Test ACCESSMonthlyEmulator initialization."""
-        emulator = ACCESSMonthlyEmulator()
-        
-        assert emulator.esm == "ACCESS-ESM1-5"
-        assert emulator.repo_id == "shahineb/climemu"
-
-    def test_access_emulator_inheritance(self):
-        """Test that ACCESSMonthlyEmulator inherits from Bouabid2026MonthlyEmulator."""
-        emulator = ACCESSMonthlyEmulator()
-        assert isinstance(emulator, Bouabid2026MonthlyEmulator)
-
-
-class TestBouabid2026DailyEmulator:
-    """Test cases for the Bouabid2026DailyEmulator class."""
-
-    def test_daily_emulator_initialization(self):
-        """Test Bouabid2026DailyEmulator initialization."""
-        emulator = Bouabid2026DailyEmulator("test_esm")
-
-        assert emulator.esm == "test_esm"
-        assert emulator.repo_id == "shahineb/climemu"
-
-
-class TestMPIDailyEmulator:
-    """Test cases for the MPIDailyEmulator class."""
-
-    def test_mpi_daily_emulator_initialization(self):
-        """Test MPIDailyEmulator initialization."""
-        emulator = MPIDailyEmulator()
-
-        assert emulator.esm == "MPI-ESM1-2-LR"
-        assert emulator.repo_id == "shahineb/climemu"
-
-    def test_mpi_daily_emulator_inheritance(self):
-        """Test that MPIDailyEmulator inherits from Bouabid2026DailyEmulator."""
-        emulator = MPIDailyEmulator()
+    @pytest.mark.parametrize("esm", DAILY_ESMS)
+    def test_build_daily_returns_correct_type(self, esm):
+        emulator = build_emulator(esm, frequency="daily")
         assert isinstance(emulator, Bouabid2026DailyEmulator)
+        assert emulator.esm == esm
+
+
+class TestBuildEmulatorErrors:
+    def test_unknown_esm_raises_keyerror(self):
+        with pytest.raises(KeyError):
+            build_emulator("NonexistentESM")
+
+    def test_wrong_frequency_raises_keyerror(self):
+        with pytest.raises(KeyError):
+            build_emulator("MPI-ESM1-2-LR", frequency="hourly")
+
+    def test_daily_for_monthly_only_esm_raises_keyerror(self):
+        """MIROC6 only has monthly — requesting daily should fail."""
+        with pytest.raises(KeyError):
+            build_emulator("MIROC6", frequency="daily")
+
+
+class TestVariableSubsetting:
+    """Test the variables= kwarg that users pass at build time."""
+
+    def _make_loaded_emulator(self, variables=None):
+        """Create an emulator with mocked load, to test variable subsetting."""
+        emulator = Bouabid2026MonthlyEmulator("test_esm", variables=variables)
+        # Mock a climatology with known variables
+        mock_clim = Mock()
+        mock_clim.data_vars = ["tas", "pr", "hurs", "sfcWind"]
+        mock_clim.__getitem__ = Mock(return_value=mock_clim)
+        emulator.climatology = mock_clim
+        emulator._resolve_variables()
+        return emulator
+
+    def test_all_variables_by_default(self):
+        emulator = self._make_loaded_emulator()
+        assert emulator.vars == ["tas", "pr", "hurs", "sfcWind"]
+        assert emulator._var_idx == [0, 1, 2, 3]
+
+    def test_subset_variables(self):
+        emulator = self._make_loaded_emulator(variables=["tas", "pr"])
+        assert emulator.vars == ["tas", "pr"]
+        assert emulator._var_idx == [0, 1]
+
+    def test_single_variable(self):
+        emulator = self._make_loaded_emulator(variables=["pr"])
+        assert emulator.vars == ["pr"]
+        assert emulator._var_idx == [1]
+
+    def test_invalid_variable_raises(self):
+        with pytest.raises(ValueError, match="Unknown variables"):
+            self._make_loaded_emulator(variables=["tas", "fake_var"])
+
+    def test_variables_kwarg_forwarded_by_build(self):
+        emulator = build_emulator("MPI-ESM1-2-LR", variables=["tas"])
+        assert emulator._vars == ["tas"]
