@@ -33,12 +33,15 @@ class GriddedEmulator(AbstractEmulator):
 
     @property
     def nlat(self):
+        """Number of latitude grid points."""
         return len(self.lat)
-    
+
     @property
     def nlon(self):
+        """Number of longitude grid points."""
         return len(self.lon)
-    
+
     @property
     def nvar(self):
+        """Number of output variables."""
         return len(self.vars)

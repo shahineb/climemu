@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 import jax.numpy as jnp
 import xarray as xr
-from climemu import build_emulator
+from earthsampler import build_emulator
 
 
 class TestMonthlyMPI:

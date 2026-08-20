@@ -1,8 +1,8 @@
-"""Tests for the factory function in climemu.__init__."""
+"""Tests for the factory function in earthsampler.__init__."""
 
 import pytest
 from unittest.mock import patch, Mock
-from climemu import build_emulator
+from earthsampler import build_emulator
 
 
 class TestBuildEmulator:
@@ -14,7 +14,7 @@ class TestBuildEmulator:
         mock_emulator_instance = Mock()
         mock_emulator_class.return_value = mock_emulator_instance
 
-        with patch('climemu.EMULATORS', {('MPI-ESM1-2-LR', 'monthly'): mock_emulator_class}):
+        with patch('earthsampler.EMULATORS', {('MPI-ESM1-2-LR', 'monthly'): mock_emulator_class}):
             result = build_emulator('MPI-ESM1-2-LR')
 
             mock_emulator_class.assert_called_once()
@@ -29,7 +29,7 @@ class TestBuildEmulator:
             ('MPI-ESM1-2-LR', 'monthly'): mock_monthly,
             ('MPI-ESM1-2-LR', 'daily'): mock_daily,
         }
-        with patch('climemu.EMULATORS', registry):
+        with patch('earthsampler.EMULATORS', registry):
             monthly = build_emulator('MPI-ESM1-2-LR', frequency='monthly')
             mock_monthly.assert_called_once()
 
@@ -38,7 +38,7 @@ class TestBuildEmulator:
 
     def test_build_emulator_with_keyerror(self):
         """Test build_emulator with an unregistered emulator name."""
-        with patch('climemu.EMULATORS', {}):
+        with patch('earthsampler.EMULATORS', {}):
             with pytest.raises(KeyError):
                 build_emulator('nonexistent_emulator')
 
@@ -48,7 +48,7 @@ class TestBuildEmulator:
             def __init__(self):
                 self.name = "test_emulator"
 
-        with patch('climemu.EMULATORS', {('test', 'monthly'): TestEmulator}):
+        with patch('earthsampler.EMULATORS', {('test', 'monthly'): TestEmulator}):
             result = build_emulator('test')
             assert isinstance(result, TestEmulator)
             assert result.name == "test_emulator"

@@ -1,7 +1,7 @@
-"""Tests for the Registry class in climemu.utils.registry."""
+"""Tests for the Registry class in earthsampler.utils.registry."""
 
 import pytest
-from climemu.utils.registry import Registry
+from earthsampler.utils.registry import Registry
 
 
 class TestRegistry:

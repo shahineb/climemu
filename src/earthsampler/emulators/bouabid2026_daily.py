@@ -15,12 +15,31 @@ from .. import EMULATORS
 
 
 class Bouabid2026DailyEmulator(GriddedEmulator):
+    """Daily climate emulator using score-based diffusion.
+
+    Generates daily anomaly fields conditioned on GMST anomaly and
+    day-of-year. Uses annual (not monthly) pattern scaling and
+    HealPIXUNetv2 with day-of-year conditioning.
+
+    Lifecycle: ``__init__`` → ``load()`` → ``compile(n_samples)`` → ``__call__(gmst, doy)``.
+    """
+
     def __init__(self, esm_name: str, variables=None):
+        """Args:
+            esm_name: Earth System Model identifier (e.g. ``"MPI-ESM1-2-LR"``).
+            variables: Optional subset of output variables (e.g. ``["tas", "pr"]``).
+                When *None*, all available variables are returned.
+        """
         self.esm = esm_name
         self.repo_id = "shahineb/climemu"
         self._vars = variables
 
     def load(self, which: str = "default"):
+        """Download pretrained weights and data from HuggingFace Hub.
+
+        Args:
+            which: Weight variant — ``"default"`` or ``"paper"``.
+        """
         self.files_dir = os.path.join(self.esm, "daily", which)
 
         # Load climatology data
@@ -47,6 +66,15 @@ class Bouabid2026DailyEmulator(GriddedEmulator):
             self.climatology = self.climatology[self._vars]
 
     def compile(self, n_samples, n_steps=30, batch_size=1):
+        """JIT-compile the generative model for a fixed sample count.
+
+        Args:
+            n_samples: Number of ensemble members per call.
+            n_steps: Diffusion sampler steps (higher = better quality, slower).
+                Minimum ~30 recommended; ``n_steps=2`` produces NaN.
+            batch_size: Number of days to generate in parallel. When >1,
+                pass a list of doys to ``__call__``.
+        """
         self.batch_size = batch_size
         self.generative_model = partial(self.precursor,
                                         n_samples=n_samples,
@@ -58,6 +86,22 @@ class Bouabid2026DailyEmulator(GriddedEmulator):
         _ = self.generative_model(pattern_batch=dummy_pattern, doy_batch=dummy_doy, key=jr.PRNGKey(0))
 
     def __call__(self, gmst, doy, seed=None, xarray=False):
+        """Generate daily climate anomaly samples.
+
+        Args:
+            gmst: GMST anomaly relative to piControl (°C). Scalar, or list
+                matching ``batch_size``.
+            doy: Day of year — integer (1–365), or string ``"dd/mm"`` or
+                ``"dd-mm"``. Scalar, or list matching ``batch_size``.
+            seed: Random seed. If *None*, a random seed is drawn.
+            xarray: If *True*, return an ``xr.Dataset`` instead of a JAX array.
+
+        Returns:
+            JAX array of shape ``(n_samples, n_vars, nlat, nlon)`` for scalar
+            doy, or ``(batch, n_samples, n_vars, nlat, nlon)`` for batched.
+            When ``xarray=True``, an ``xr.Dataset`` with coordinates
+            ``member``, ``lat``, ``lon`` (and ``batch`` if batched).
+        """
         key = jr.PRNGKey(seed) if seed else jr.PRNGKey(np.random.randint(0, 1000000))
         is_batch = isinstance(doy, list)
 
@@ -229,5 +273,6 @@ def draw_samples_daily_batch(nn, schedule, pattern_batch, doy_batch, n_samples, 
 
 @EMULATORS.register(("MPI-ESM1-2-LR", "daily"))
 class MPIDailyEmulator(Bouabid2026DailyEmulator):
+    """Daily emulator for MPI-ESM1-2-LR."""
     def __init__(self, **kwargs):
         super().__init__(esm_name="MPI-ESM1-2-LR", **kwargs)

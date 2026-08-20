@@ -1,5 +1,5 @@
 import pytest
-from climemu.utils.datetime import parse_doy
+from earthsampler.utils.datetime import parse_doy
 
 
 class TestParseDoyInt:

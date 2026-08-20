@@ -1,5 +1,5 @@
-[![image](https://github.com/shahineb/climemu/actions/workflows/ci.yml/badge.svg)](https://github.com/shahineb/climemu/actions/workflows/ci.yml)
-[![image](https://img.shields.io/pypi/v/climemu)](https://pypi.org/project/climemu/)
+[![image](https://github.com/shahineb/mit-earthsampler/actions/workflows/ci.yml/badge.svg)](https://github.com/shahineb/mit-earthsampler/actions/workflows/ci.yml)
+[![image](https://img.shields.io/pypi/v/earthsampler)](https://pypi.org/project/earthsampler/)
 [![arXiv](https://img.shields.io/badge/arXiv-2510.04358-b31b1b.svg)](https://arxiv.org/abs/2510.04358)
 
 # ESM Emulation with diffusion models in JAX
@@ -11,20 +11,20 @@ Codebase allows to run emulators of monthly averaged near-surface temperature, p
 Code tested on Python ≥3.11. GPU support is required for practical usage. Install from PyPI:
 
 <table>
-  <tr><td>CPU</td><td><code>pip install climemu</code></td></tr>
-  <tr><td>NVIDIA GPU</td><td><code>pip install climemu[cuda12]</code></td></tr>
-  <tr><td>Google TPU</td><td><code>pip install climemu[tpu]</code></td></tr>
+  <tr><td>CPU</td><td><code>pip install earthsampler</code></td></tr>
+  <tr><td>NVIDIA GPU</td><td><code>pip install earthsampler[cuda12]</code></td></tr>
+  <tr><td>Google TPU</td><td><code>pip install earthsampler[tpu]</code></td></tr>
 </table>
 
 
 ## Usage
-[![Demo](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/shahineb/climemu/blob/main/examples/collab-demo.ipynb)
+[![Demo](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/shahineb/mit-earthsampler/blob/main/examples/collab-demo.ipynb)
 
 ```python
-import climemu
+import earthsampler
 
 # Instantiate emulator
-emulator = climemu.build_emulator("MPI-ESM1-2-LR")
+emulator = earthsampler.build_emulator("MPI-ESM1-2-LR")
 
 # Download pretrained weights and compile (~1min)
 emulator.load()
@@ -51,4 +51,4 @@ samples = emulator(gmst=2,       # GMST anomaly wrt piControl (°C)
   publisher={Wiley Online Library}
 }
 ```
-:warning: _Code and instructions to reproduce the paper results has been moved to a [legacy branch](https://github.com/shahineb/climemu/tree/150826-paper/paper)_ 
+:warning: _Code and instructions to reproduce the paper results have been moved to a [legacy branch](https://github.com/shahineb/mit-earthsampler/tree/150826-paper/paper)_

@@ -14,12 +14,32 @@ from .. import EMULATORS
 
 
 class Bouabid2026MonthlyEmulator(GriddedEmulator):
+    """Monthly climate emulator using score-based diffusion.
+
+    Generates monthly-averaged anomaly fields for near-surface temperature
+    (tas), precipitation (pr), relative humidity (hurs), and wind speed
+    (sfcWind), conditioned on global-mean surface temperature (GMST) anomaly
+    and calendar month.
+
+    Lifecycle: ``__init__`` → ``load()`` → ``compile(n_samples)`` → ``__call__(gmst, month)``.
+    """
+
     def __init__(self, esm_name: str, variables=None):
+        """Args:
+            esm_name: Earth System Model identifier (e.g. ``"MPI-ESM1-2-LR"``).
+            variables: Optional subset of output variables (e.g. ``["tas", "pr"]``).
+                When *None*, all available variables are returned.
+        """
         self.esm = esm_name
         self.repo_id = "shahineb/climemu"
         self._vars = variables
 
     def load(self, which: str = "default"):
+        """Download pretrained weights and data from HuggingFace Hub.
+
+        Args:
+            which: Weight variant — ``"default"`` or ``"paper"``.
+        """
         # Set files directory in hugging face repo
         self.files_dir = os.path.join(self.esm, "monthly", which)
 
@@ -51,6 +71,15 @@ class Bouabid2026MonthlyEmulator(GriddedEmulator):
             self.climatology = self.climatology[self._vars]
 
     def compile(self, n_samples, n_steps=30, batch_size=1):
+        """JIT-compile the generative model for a fixed sample count.
+
+        Args:
+            n_samples: Number of ensemble members per call.
+            n_steps: Diffusion sampler steps (higher = better quality, slower).
+                Minimum ~30 recommended; ``n_steps=2`` produces NaN.
+            batch_size: Number of months to generate in parallel. When >1,
+                pass a list of months to ``__call__``.
+        """
         # Fix number of samples, steps, and batch size for generation
         self.batch_size = batch_size
         self.generative_model = partial(self.precursor,
@@ -62,6 +91,21 @@ class Bouabid2026MonthlyEmulator(GriddedEmulator):
         _ = self.generative_model(pattern_batch=dummy_pattern, key=jr.PRNGKey(0))
 
     def __call__(self, gmst, month, seed=None, xarray=False):
+        """Generate climate anomaly samples.
+
+        Args:
+            gmst: GMST anomaly relative to piControl (°C). Scalar, or list
+                matching ``batch_size``.
+            month: Calendar month (1–12). Scalar, or list matching ``batch_size``.
+            seed: Random seed. If *None*, a random seed is drawn.
+            xarray: If *True*, return an ``xr.Dataset`` instead of a JAX array.
+
+        Returns:
+            JAX array of shape ``(n_samples, n_vars, nlat, nlon)`` for scalar
+            month, or ``(batch, n_samples, n_vars, nlat, nlon)`` for batched.
+            When ``xarray=True``, an ``xr.Dataset`` with coordinates
+            ``member``, ``lat``, ``lon`` (and ``batch`` if batched).
+        """
         key = jr.PRNGKey(seed) if seed else jr.PRNGKey(np.random.randint(0, 1000000))
         is_batch = not np.isscalar(month)
 
@@ -211,17 +255,23 @@ class Bouabid2026MonthlyEmulator(GriddedEmulator):
 
 @eqx.filter_jit
 def normalize(x, μ, σ):
-    """Normalize data using mean and standard deviation."""
+    """Normalize data using mean and standard deviation.
+    :meta private:
+    """
     return (x - μ) / σ
 
 @eqx.filter_jit
 def denormalize(x, μ, σ):
-    """Denormalize data using mean and standard deviation."""
+    """Denormalize data using mean and standard deviation.
+    :meta private:
+    """
     return σ * x + μ
 
 
 def create_sampler(nn, schedule, pattern, μ, σ, output_size):
-    """Create a sampler for a given pattern."""
+    """Create a sampler for a given pattern.
+    :meta private:
+    """
     context = normalize(pattern, μ[-1], σ[-1])[None, ...]
     def nn_with_context(x, t):
         x = jnp.concatenate((x, context), axis=0)
@@ -230,14 +280,18 @@ def create_sampler(nn, schedule, pattern, μ, σ, output_size):
 
 @eqx.filter_jit
 def draw_samples_single(nn, schedule, pattern, n_samples, n_steps, μ, σ, output_size, key=jr.PRNGKey(0)):
-    """Draw samples for a given pattern."""
+    """Draw samples for a given pattern.
+    :meta private:
+    """
     sampler = create_sampler(nn, schedule, pattern, μ, σ, output_size)
     samples = sampler.sample(n_samples, steps=n_steps, key=key)
     return denormalize(samples, μ[:-1], σ[:-1])
 
 @eqx.filter_jit
 def draw_samples_batch(nn, schedule, pattern_batch, n_samples, n_steps, μ, σ, output_size, key=jr.PRNGKey(0)):
-    """Draw samples for a batch of patterns."""
+    """Draw samples for a batch of patterns.
+    :meta private:
+    """
     keys = jr.split(key, pattern_batch.shape[0])
     Γ = partial(draw_samples_single,
                 nn=nn, schedule=schedule,
@@ -248,29 +302,34 @@ def draw_samples_batch(nn, schedule, pattern_batch, n_samples, n_steps, μ, σ, 
 
 @EMULATORS.register(("MPI-ESM1-2-LR", "monthly"))
 class MPIMonthlyEmulator(Bouabid2026MonthlyEmulator):
+    """Monthly emulator for MPI-ESM1-2-LR."""
     def __init__(self, **kwargs):
         super().__init__(esm_name="MPI-ESM1-2-LR", **kwargs)
 
 
 @EMULATORS.register(("MIROC6", "monthly"))
 class MIROCMonthlyEmulator(Bouabid2026MonthlyEmulator):
+    """Monthly emulator for MIROC6."""
     def __init__(self, **kwargs):
         super().__init__(esm_name="MIROC6", **kwargs)
 
 
 @EMULATORS.register(("ACCESS-ESM1-5", "monthly"))
 class ACCESSMonthlyEmulator(Bouabid2026MonthlyEmulator):
+    """Monthly emulator for ACCESS-ESM1-5."""
     def __init__(self, **kwargs):
         super().__init__(esm_name="ACCESS-ESM1-5", **kwargs)
 
 
 @EMULATORS.register(("CanESM5", "monthly"))
 class CanESMMonthlyEmulator(Bouabid2026MonthlyEmulator):
+    """Monthly emulator for CanESM5."""
     def __init__(self, **kwargs):
         super().__init__(esm_name="CanESM5", **kwargs)
 
 
 @EMULATORS.register(("IPSL-CM6A-LR", "monthly"))
 class IPSLMonthlyEmulator(Bouabid2026MonthlyEmulator):
+    """Monthly emulator for IPSL-CM6A-LR."""
     def __init__(self, **kwargs):
         super().__init__(esm_name="IPSL-CM6A-LR", **kwargs)

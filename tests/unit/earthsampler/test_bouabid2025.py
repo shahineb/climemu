@@ -3,7 +3,7 @@
 import pytest
 import jax.numpy as jnp
 from unittest.mock import Mock, patch
-from climemu.emulators.bouabid2026_monthly import Bouabid2026MonthlyEmulator
+from earthsampler.emulators.bouabid2026_monthly import Bouabid2026MonthlyEmulator
 
 
 class TestEmulatorLifecycle:
@@ -21,9 +21,9 @@ class TestEmulatorLifecycle:
         with pytest.raises(AttributeError):
             emulator(gmst=2.0, month=3)
 
-    @patch('climemu.emulators.bouabid2026_monthly.Bouabid2026MonthlyEmulator._load_precursor')
-    @patch('climemu.emulators.bouabid2026_monthly.Bouabid2026MonthlyEmulator._load_climatology')
-    @patch('climemu.emulators.bouabid2026_monthly.Bouabid2026MonthlyEmulator._load_pattern_scaling')
+    @patch('earthsampler.emulators.bouabid2026_monthly.Bouabid2026MonthlyEmulator._load_precursor')
+    @patch('earthsampler.emulators.bouabid2026_monthly.Bouabid2026MonthlyEmulator._load_climatology')
+    @patch('earthsampler.emulators.bouabid2026_monthly.Bouabid2026MonthlyEmulator._load_pattern_scaling')
     def test_load_sets_files_dir(self, mock_ps, mock_clim, mock_precursor):
         mock_ps.return_value = Mock()
         mock_ds = Mock()

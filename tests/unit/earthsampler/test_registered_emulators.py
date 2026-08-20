@@ -2,9 +2,9 @@
 
 import pytest
 from unittest.mock import Mock
-from climemu import build_emulator, EMULATORS
-from climemu.emulators.bouabid2026_monthly import Bouabid2026MonthlyEmulator
-from climemu.emulators.bouabid2026_daily import Bouabid2026DailyEmulator
+from earthsampler import build_emulator, EMULATORS
+from earthsampler.emulators.bouabid2026_monthly import Bouabid2026MonthlyEmulator
+from earthsampler.emulators.bouabid2026_daily import Bouabid2026DailyEmulator
 
 
 # All ESM/frequency pairs that should be registered

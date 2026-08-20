@@ -2,47 +2,20 @@ import types
 
 
 class Registry(dict):
-    """
-    A helper class for managing access to builders, it extends a dictionary
-    and provides a registering functions than can be used as a decorator
+    """Dictionary-based registry for builder callables.
 
-    Creating a registry:
+    Supports registration via function call or decorator. Access registered
+    builders like a regular dictionary.
+
+    Example::
+
         MODULES = Registry()
 
-    There two types of builder callable you can register:
-
-    (1) : Functions which can be registered by either a simple call
-        ```
-        def build_bar():
-            return True
-        MODULES.register('bar', build_bar)
-        ```
-        or using a decorator at function definition
-        ```
         @MODULES.register('bar')
         def build_bar():
             return True
-        ```
 
-    (2) : Class constructor method cls.build which again can be registered
-    with a call if class has a cls.build method
-        ```
-        foo = Foo()
-        MODULES.register('Foo', foo)
-        ```
-        of using a decorator at class definition
-        ```
-        @MODULES.register('foo')
-        class Foo:
-            @classmethod
-            def build(cls, *args, **kwargs):
-                # build a class instance foo
-                return foo
-        ```
-
-    Access of module is just like using a dictionary, eg:
         build_bar = MODULES['bar']
-        build_foo = MODULES['foo']
     """
 
     def __init__(self, *args, **kwargs):

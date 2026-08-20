@@ -1,4 +1,4 @@
-"""Shared test fixtures and configuration for climemu tests."""
+"""Shared test fixtures and configuration for earthsampler tests."""
 
 import pytest
 from huggingface_hub import hf_hub_download

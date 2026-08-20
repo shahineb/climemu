@@ -1,1 +1,1 @@
-# Test package for climemu
+# Test package for earthsampler
