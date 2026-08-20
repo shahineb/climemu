@@ -3,6 +3,7 @@ import yaml
 from functools import partial
 import xarray as xr
 import numpy as np
+import jax
 import jax.numpy as jnp
 import jax.random as jr
 import equinox as eqx
@@ -49,41 +50,70 @@ class Bouabid2026MonthlyEmulator(GriddedEmulator):
             self._var_idx = [all_vars.index(v) for v in self._vars]
             self.climatology = self.climatology[self._vars]
 
-    def compile(self, n_samples, n_steps=30):
-        # Fix number of samples and steps for generation
+    def compile(self, n_samples, n_steps=30, batch_size=1):
+        # Fix number of samples, steps, and batch size for generation
+        self.batch_size = batch_size
         self.generative_model = partial(self.precursor,
                                         n_samples=n_samples,
                                         n_steps=n_steps)
 
         # Perform a dry run to compile the JAX functions (important for performance)
-        dummy_pattern = jnp.zeros((self.nlat, self.nlon))
-        _ = self.generative_model(pattern=dummy_pattern, key=jr.PRNGKey(0))
+        dummy_pattern = jnp.zeros((batch_size, self.nlat, self.nlon))
+        _ = self.generative_model(pattern_batch=dummy_pattern, key=jr.PRNGKey(0))
 
     def __call__(self, gmst, month, seed=None, xarray=False):
-        # Apply pattern scaling: pattern = β₀ + β₁ * ΔT
-        pattern = self.β[month - 1, :, 1] * gmst + self.β[month - 1, :, 0]
-        pattern = pattern.reshape((self.nlat, self.nlon))
+        key = jr.PRNGKey(seed) if seed else jr.PRNGKey(np.random.randint(0, 1000000))
+        is_batch = not np.isscalar(month)
+
+        # Normalize inputs to arrays
+        months = np.atleast_1d(np.asarray(month))
+        gmsts = np.broadcast_to(np.atleast_1d(np.asarray(gmst)), months.shape)
+
+        if len(months) != self.batch_size:
+            raise ValueError(f"Expected {self.batch_size} months (batch_size), got {len(months)}")
+
+        # Apply pattern scaling: pattern = β₁ * ΔT + β₀
+        patterns = self.β[months - 1, :, 1] * gmsts[:, None] + self.β[months - 1, :, 0]
+        patterns = patterns.reshape((-1, self.nlat, self.nlon))
 
         # Generate samples using the diffusion model
-        key = jr.PRNGKey(seed) if seed else jr.PRNGKey(np.random.randint(0, 1000000))
-        samples = self.generative_model(pattern=pattern, key=key)
+        samples = self.generative_model(pattern_batch=jnp.array(patterns), key=key)
 
         # Subset to requested variables
-        samples = samples[:, self._var_idx]
+        samples = samples[:, :, self._var_idx]  # (B, n_samples, n_vars, nlat, nlon)
+
+        # Squeeze batch dim for single-month calls (backward compat)
+        if not is_batch:
+            samples = samples[0]  # (n_samples, n_vars, nlat, nlon)
 
         # Convert to xarray Dataset
         if xarray:
-            samples = xr.Dataset(
-                {
-                    var: (("member", "lat", "lon"), samples[:, i, :, :])
-                    for i, var in enumerate(self.vars)
-                },
-                coords={
-                    "member": jnp.arange(len(samples)) + 1,
-                    "lat": self.lat,
-                    "lon": self.lon,
-                },
-            )
+            if is_batch:
+                samples = xr.Dataset(
+                    {
+                        var: (("batch", "member", "lat", "lon"), samples[:, :, i])
+                        for i, var in enumerate(self.vars)
+                    },
+                    coords={
+                        "month": ("batch", months),
+                        "gmst_anomaly": ("batch", gmsts),
+                        "member": jnp.arange(samples.shape[1]) + 1,
+                        "lat": self.lat,
+                        "lon": self.lon,
+                    },
+                )
+            else:
+                samples = xr.Dataset(
+                    {
+                        var: (("member", "lat", "lon"), samples[:, i, :, :])
+                        for i, var in enumerate(self.vars)
+                    },
+                    coords={
+                        "member": jnp.arange(len(samples)) + 1,
+                        "lat": self.lat,
+                        "lon": self.lon,
+                    },
+                )
         return samples
 
     def _load_precursor(self):
@@ -98,8 +128,8 @@ class Bouabid2026MonthlyEmulator(GriddedEmulator):
         # Define the output size for the generated samples
         output_size = (config['out_channels'], config['input_size'][1], config['input_size'][2])
 
-        # Create an precursor for the generative model
-        precursor = partial(draw_samples_single,
+        # Create a precursor for the generative model
+        precursor = partial(draw_samples_batch,
                             nn=nn,
                             schedule=schedule,
                             output_size=output_size,
@@ -204,6 +234,16 @@ def draw_samples_single(nn, schedule, pattern, n_samples, n_steps, μ, σ, outpu
     sampler = create_sampler(nn, schedule, pattern, μ, σ, output_size)
     samples = sampler.sample(n_samples, steps=n_steps, key=key)
     return denormalize(samples, μ[:-1], σ[:-1])
+
+@eqx.filter_jit
+def draw_samples_batch(nn, schedule, pattern_batch, n_samples, n_steps, μ, σ, output_size, key=jr.PRNGKey(0)):
+    """Draw samples for a batch of patterns."""
+    keys = jr.split(key, pattern_batch.shape[0])
+    Γ = partial(draw_samples_single,
+                nn=nn, schedule=schedule,
+                n_samples=n_samples, n_steps=n_steps,
+                μ=μ, σ=σ, output_size=output_size)
+    return jax.vmap(Γ)(pattern=pattern_batch, key=keys)
 
 
 @EMULATORS.register(("MPI-ESM1-2-LR", "monthly"))

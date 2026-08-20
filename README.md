@@ -36,11 +36,9 @@ samples = emulator(gmst=2,       # GMST anomaly wrt piControl (°C)
                    seed=0,       # Random seed
                    xarray=True)  # Return xr.Dataset
 ```
-:warning: _Default model files for usage are trained on the full set of Tier I SSP simulations. To reproduce the paper results follow [instructions](paper/README.md)_.
 
 
-
-## Citing
+## Reference
 ```bibtex
 @article{bouabid2026score,
   title={Score-based generative emulation of impact-relevant Earth system model outputs},
@@ -53,3 +51,4 @@ samples = emulator(gmst=2,       # GMST anomaly wrt piControl (°C)
   publisher={Wiley Online Library}
 }
 ```
+:warning: _Code and instructions to reproduce the paper results has been moved to a [legacy branch](https://github.com/shahineb/climemu/tree/150826-paper/paper)_ 
