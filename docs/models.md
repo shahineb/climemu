@@ -1,7 +1,6 @@
 # Model availability
 
-The library provides pretrained emulator weights for several CMIP6 Earth system models (ESMs), with monthly—and, where available, daily—temporal resolution. Each emulator generates joint samples of impact-relevant climate variables on the ESM’s native atmospheric latitude–longitude grid. The ESM, frequency, and variables are selected at build time e.g.
-Variables are selected at build time
+The library provides pretrained emulator weights for several CMIP6 Earth system models (ESMs), with monthly —and, where available, daily— temporal resolution. Each emulator generates joint samples of impact-relevant climate variables on the ESM’s native atmospheric latitude–longitude grid. The ESM, frequency, and variables are selected at build time e.g.
 ```python
 >>> emulator = earthsampler.build_emulator(esm_name="MPI-ESM1-2-LR",
                                            frequency="daily",
@@ -23,7 +22,7 @@ Variables are selected at build time
 
 ## Supported Variables
 
-All emulators generate **anomalies** relative to the corresponding ESM’s pre-industrial climatology. This climatology is available through `emulator.climatology`.
+All emulators generate **anomalies** relative to the corresponding ESM’s pre-industrial climatology. This climatology is available through `emulator.climatology` (see {doc}`usage`)
 
 
 | Short name | Long name | Units | Description |
