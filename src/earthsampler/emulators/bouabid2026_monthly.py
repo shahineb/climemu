@@ -11,6 +11,7 @@ from huggingface_hub import hf_hub_download
 from diffusion import HealPIXUNetv1, ContinuousVESchedule, ContinuousHeunSampler
 from .abstractemulator import GriddedEmulator
 from .. import EMULATORS
+from ..units import VARIABLE_UNITS
 
 
 class Bouabid2026MonthlyEmulator(GriddedEmulator):
@@ -158,6 +159,8 @@ class Bouabid2026MonthlyEmulator(GriddedEmulator):
                         "lon": self.lon,
                     },
                 )
+            for var in self.vars:
+                samples[var].attrs["units"] = VARIABLE_UNITS[var]
         return samples
 
     def _load_precursor(self):

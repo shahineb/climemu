@@ -1,15 +1,12 @@
-# earthsampler
-
-**Score-based generative emulation of Earth system model outputs.**
-
-earthsampler lets you generate ensembles of gridded climate fields
-(temperature, precipitation, humidity, wind speed) conditioned on
-global-mean surface temperature anomaly, using pretrained diffusion models.
+```{include} gettingstarted.md
+```
 
 ```{toctree}
 :maxdepth: 2
+:hidden:
 
-installation
-quickstart
+gettingstarted
+models
+usage
 autoapi/index
 ```

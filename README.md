@@ -2,9 +2,9 @@
 [![image](https://img.shields.io/pypi/v/earthsampler)](https://pypi.org/project/earthsampler/)
 [![arXiv](https://img.shields.io/badge/arXiv-2510.04358-b31b1b.svg)](https://arxiv.org/abs/2510.04358)
 
-# ESM Emulation with diffusion models in JAX
+# MIT EarthSampler
 
-Codebase allows to run emulators of monthly averaged near-surface temperature, precipitation, relative humidity, wind speed for MPI-ESM1-2-LR, MIROC6, ACCESS-ESM1-5.
+Pretrained generative emulators on CMIP6 Earth system model for sampling spatially coherent projections of impact-relevant climate variables.
 
 ## Installation
 
@@ -18,7 +18,6 @@ Code tested on Python ≥3.11. GPU support is required for practical usage. Inst
 
 
 ## Usage
-[![Demo](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/shahineb/mit-earthsampler/blob/main/examples/collab-demo.ipynb)
 
 ```python
 import earthsampler

@@ -1,4 +1,4 @@
-project = "earthsampler"
+project = "MIT EarthSampler"
 copyright = "2026, Shahine Bouabid"
 author = "Shahine Bouabid"
 
@@ -33,7 +33,7 @@ myst_enable_extensions = ["colon_fence"]
 html_theme = "furo"
 
 # Suppress noisy warnings
-suppress_warnings = ["autoapi.python_import_resolution"]
+suppress_warnings = ["autoapi.python_import_resolution", "toc.not_included"]
 
 # Hide documented functions that have ":meta private:" in their docstring
 def _skip_private_meta(app, what, name, obj, skip, options):

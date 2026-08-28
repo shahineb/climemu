@@ -12,6 +12,7 @@ from diffusion import HealPIXUNetv2, ContinuousVESchedule, ContinuousHeunSampler
 from .abstractemulator import GriddedEmulator
 from ..utils.datetime import parse_doy
 from .. import EMULATORS
+from ..units import VARIABLE_UNITS
 
 
 class Bouabid2026DailyEmulator(GriddedEmulator):
@@ -155,6 +156,8 @@ class Bouabid2026DailyEmulator(GriddedEmulator):
                         "lon": self.lon,
                     },
                 )
+            for var in self.vars:
+                samples[var].attrs["units"] = VARIABLE_UNITS[var]
         return samples
 
     def _load_precursor(self):
