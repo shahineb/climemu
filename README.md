@@ -4,7 +4,7 @@
 
 # MIT EarthSampler
 
-Pretrained generative emulators on CMIP6 Earth system model for sampling spatially coherent projections of impact-relevant climate variables.
+Generative climate emulators trained to reproduce CMIP6 Earth system models. Allows to sample spatially coherent projections of impact-relevant climate variables at different warming levels.
 
 ## Installation
 
