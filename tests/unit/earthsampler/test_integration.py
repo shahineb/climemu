@@ -47,6 +47,7 @@ class TestMonthlyMPI:
         assert np.array_equal(ds.lon.values, emulator.lon)
 
 
+@pytest.mark.local
 class TestMonthlyMPIBatch:
     """Monthly MPI-ESM1-2-LR batched sampling tests."""
 
@@ -100,6 +101,7 @@ class TestMonthlyMPIBatch:
         assert np.array_equal(ds.gmst_anomaly.values, [1.0, 1.5, 2.0])
 
 
+@pytest.mark.local
 class TestDailyMPI:
     """Daily MPI-ESM1-2-LR end-to-end tests."""
 
@@ -140,6 +142,7 @@ class TestDailyMPI:
         assert ds.member.size == 2
 
 
+@pytest.mark.local
 class TestDailyMPIBatch:
     """Daily MPI-ESM1-2-LR batched sampling tests."""
 

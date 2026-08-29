@@ -1,27 +1,20 @@
-name: CI
+name: CI (full)
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
 
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -32,13 +25,13 @@ jobs:
           path: |
             ~/.cache/uv
             .venv
-          key: uv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('uv.lock', 'pyproject.toml') }}
+          key: uv-${{ runner.os }}-3.12-${{ hashFiles('uv.lock', 'pyproject.toml') }}
           restore-keys: |
-            uv-${{ runner.os }}-${{ matrix.python-version }}-
+            uv-${{ runner.os }}-3.12-
 
       - name: Prepare test env
         run: uv sync --dev
-        
+
       - name: Build distribution
         run: uv build
 
@@ -51,4 +44,4 @@ jobs:
       - name: Run tests
         env:
           PYTHONPATH: ""
-        run: uv run pytest -v --import-mode=importlib -m "not local"
+        run: uv run pytest -v --import-mode=importlib

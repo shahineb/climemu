@@ -58,7 +58,7 @@ Data variables:
 >>> plt.tight_layout(); plt.show()
 ```
 
-```{image} img/output.png
+```{image} img/gettingstarted.png
 :width: 100%
 :align: center
 ```

@@ -73,6 +73,9 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.pytest.ini_options]
+markers = [
+    "local: integration tests requiring HF downloads and model inference (skipped in CI)",
+]
 filterwarnings = [
     "ignore::DeprecationWarning:equinox.internal._noinline",
     "ignore::DeprecationWarning:jax.interpreters.batching",

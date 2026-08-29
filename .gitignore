@@ -171,6 +171,9 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Python version
+.python-version	
+
 
 # data files
 *.nc
@@ -182,9 +185,6 @@ cython_debug/
 *.pkl
 *.zip
 *.eqx
-*.jpg
-*.png
-*.eps
 
 
 # VS Code
