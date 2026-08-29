@@ -38,15 +38,6 @@ jobs:
 
       - name: Prepare test env
         run: uv sync --dev
-        
-      - name: Build distribution
-        run: uv build
-
-      - name: Install built package
-        run: uv pip install dist/*.whl
-
-      - name: Install test dependencies
-        run: uv pip install -e .[test]
 
       - name: Run tests
         env:
