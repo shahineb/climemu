@@ -1,6 +1,6 @@
 # Getting started
 
-MIT EarthSampler provides access to pretrained generative climate model emulators for sampling spatially coherent projections of impact-relevant climate variables under global warming. It was developed as part of the [MIT Bringing Computation to the Climate Challenge (BC3) project](https://bc3.mit.edu/).
+EarthSampler provides access to pretrained generative climate model emulators for sampling spatially coherent projections of impact-relevant climate variables under global warming. It was developed as part of the [MIT Bringing Computation to the Climate Challenge (BC3) project](https://bc3.mit.edu/).
 
 ## Installation
 Requires Python ≥3.11. GPU/TPU support is recommended for practical usage.
@@ -23,7 +23,7 @@ emulator = earthsampler.build_emulator("MPI-ESM1-2-LR", frequency="monthly")
 
 # Download pretrained weights and compile (~1min)
 emulator.load()
-emulator.compile(n_samples=1)   # Nb of samples generated at each call
+emulator.compile(n_samples=5)   # Nb of samples generated at each call
 
 # Generate 5 samples for a given gmst and month
 samples = emulator(gmst=2,       # GMST anomaly wrt pre-industrial (°C)

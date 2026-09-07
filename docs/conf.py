@@ -1,4 +1,4 @@
-project = "MIT EarthSampler"
+project = "EarthSampler"
 copyright = "2026, Shahine Bouabid"
 author = "Shahine Bouabid"
 
