@@ -9,4 +9,5 @@ gettingstarted
 models
 usage
 autoapi/index
+GitHub <https://github.com/shahineb/mit-earthsampler>
 ```

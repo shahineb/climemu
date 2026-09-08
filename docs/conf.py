@@ -31,6 +31,11 @@ myst_enable_extensions = ["colon_fence"]
 
 # Theme
 html_theme = "furo"
+html_title = "EarthSampler"
+html_theme_options = {
+    "source_repository": "https://github.com/shahineb/mit-earthsampler",
+    "source_branch": "main",
+}
 
 # Suppress noisy warnings
 suppress_warnings = ["autoapi.python_import_resolution", "toc.not_included"]
